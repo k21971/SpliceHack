@@ -8,23 +8,23 @@
 
 # autonamed chroot directory. Can rename.
 DATESTAMP=`date +%Y%m%d-%H%M%S`
-NAO_CHROOT="/opt/splicehack/chroot"
+NAO_CHROOT="/opt/nethack/chroot"
 # config outside of chroot
-DGL_CONFIG="/opt/splicehack/dgamelaunch.conf"
+DGL_CONFIG="/opt/nethack/dgamelaunch.conf"
 # already compiled versions of dgl and nethack
 DGL_GIT="/home/build/dgamelaunch"
-NETHACK_GIT="/home/build/Spl-R-1.0.0"
+NETHACK_GIT="/home/build/SpliceHack"
 # the user & group from dgamelaunch config file.
 USRGRP="games:games"
 # COMPRESS from include/config.h; the compression binary to copy. leave blank to skip.
 COMPRESSBIN="/bin/gzip"
 # fixed data to copy (leave blank to skip)
-NH_GIT="/home/build/Spl-R-1.0.0"
-NH_BRANCH="3.7-hdf" # will probably need to make another hdf branch for this one
+NH_GIT="/home/build/SpliceHack"
+NH_BRANCH="master"
 # HACKDIR from include/config.h; aka nethack subdir inside chroot
-NHSUBDIR="nh370.35-hdf"
+NHSUBDIR="splicehack-1.0.0"
 # VAR_PLAYGROUND from include/unixconf.h
-NH_VAR_PLAYGROUND="/nh370.35-hdf/var/"
+NH_VAR_PLAYGROUND="/splicehack-1.0.0/var/"
 # only define this if dgl was configured with --enable-sqlite
 SQLITE_DBFILE="/dgldir/dgamelaunch.db"
 # END OF CONFIG
@@ -51,17 +51,17 @@ set -e
 umask 022
 
 echo "Creating inprogress and extrainfo directories"
-mkdir -p "$NAO_CHROOT/dgldir/inprogress-nh370.35-hdf"
-chown "$USRGRP" "$NAO_CHROOT/dgldir/inprogress-nh370.35-hdf"
-mkdir -p "$NAO_CHROOT/dgldir/extrainfo-nh370"
-chown "$USRGRP" "$NAO_CHROOT/dgldir/extrainfo-nh370"
+mkdir -p "$NAO_CHROOT/dgldir/inprogress-spl100"
+chown "$USRGRP" "$NAO_CHROOT/dgldir/inprogress-spl100"
+mkdir -p "$NAO_CHROOT/dgldir/extrainfo-spl"
+chown "$USRGRP" "$NAO_CHROOT/dgldir/extrainfo-spl"
 
 echo "Making $NAO_CHROOT/$NHSUBDIR"
 mkdir -p "$NAO_CHROOT/$NHSUBDIR"
 
 NETHACKBIN="$NETHACK_GIT/src/splicehack"
 if [ -n "$NETHACKBIN" -a ! -e "$NETHACKBIN" ]; then
-  errorexit "Cannot find NetHack binary $NETHACKBIN"
+  errorexit "Cannot find SpliceHack binary $NETHACKBIN"
 fi
 
 if [ -n "$NETHACKBIN" -a -e "$NETHACKBIN" ]; then
@@ -69,12 +69,12 @@ if [ -n "$NETHACKBIN" -a -e "$NETHACKBIN" ]; then
   cd "$NAO_CHROOT/$NHSUBDIR"
   NHBINFILE="`basename $NETHACKBIN`-$DATESTAMP"
   cp "$NETHACKBIN" "$NHBINFILE"
-  ln -fs "$NHBINFILE" nethack
+  ln -fs "$NHBINFILE" splicehack
   LIBS="$LIBS `findlibs $NETHACKBIN`"
   cd "$NAO_CHROOT"
 fi
 
-echo "Copying NetHack playground stuff"
+echo "Copying SpliceHack playground stuff"
 cp "$NETHACK_GIT/dat/nhdat" "$NAO_CHROOT/$NHSUBDIR"
 chmod 644 "$NAO_CHROOT/$NHSUBDIR/nhdat"
 cp "$NETHACK_GIT/dat/symbols" "$NAO_CHROOT/$NHSUBDIR"
@@ -86,6 +86,12 @@ echo "Copying sysconf file"
 SYSCF="$NAO_CHROOT/$NHSUBDIR/sysconf"
 cp "$NETHACK_GIT/sys/unix/sysconf" "$SYSCF"
 chmod 644 $SYSCF
+
+echo "Copying splicetips file"
+TIPS="$NAO_CHROOT/$NHSUBDIR/splicetips"
+cp "$NETHACK_GIT/dat/splicetips" "$TIPS"
+chmod 644 $TIPS
+chown -R "$USRGRP" "$NAO_CHROOT/$NHSUBDIR/splicetips"
 
 echo "Creating SpliceHack variable dir stuff."
 mkdir -p "$NAO_CHROOT/$NHSUBDIR/var"

@@ -9,11 +9,10 @@
 # for Ubuntu dapper.
 # Does not copy required libraries or termcap files into the chroot.
 
-COMPILEREVISION?=1
 
 PREFIX=/usr
 #PREFIX=$(wildcard ~)/spl/install
-HACKDIR=$(PREFIX)/games/lib/370-hdf_$(GAME)dir
+HACKDIR=$(PREFIX)/games/lib/$(GAME)dir
 SHELLDIR = $(PREFIX)/games
 INSTDIR=$(HACKDIR)
 VARDIR = $(HACKDIR)/var
@@ -21,7 +20,7 @@ VARDIR = $(HACKDIR)/var
 
 POSTINSTALL=cp -n sys/unix/sysconf $(INSTDIR)/sysconf; $(CHOWN) $(GAMEUID) $(INSTDIR)/sysconf; $(CHGRP) $(GAMEGRP) $(INSTDIR)/sysconf; chmod $(VARFILEPERM) $(INSTDIR)/sysconf;
 
-CFLAGS=-g -O0 -I../include -DNOTPARMDECL
+CFLAGS=-g3 -O2 -I../include -DNOTPARMDECL
 CFLAGS+=-DDLB
 CFLAGS+=-DCOMPRESS=\"/bin/gzip\" -DCOMPRESS_EXTENSION=\".gz\"
 CFLAGS+=-DGCC_WARN -Wall -Wextra -Wformat=2 # -Werror
@@ -29,7 +28,7 @@ CFLAGS+=-Wimplicit -Wreturn-type -Wunused -Wswitch -Wshadow -Wwrite-strings
 CFLAGS+=-Wno-format-nonliteral
 CFLAGS+=-Wno-stringop-truncation
 CFLAGS+=-Wno-missing-field-initializers
-CFLAGS+=-Wno-format-overflow
+CFLAGS+=-Wno-format-overflow -Wno-stringop-overflow
 CFLAGS+=-DSYSCF -DSYSCF_FILE=\"$(HACKDIR)/sysconf\" -DSECURE
 CFLAGS+=-DTIMED_DELAY
 CFLAGS+=-DHACKDIR=\"$(HACKDIR)\"
@@ -42,7 +41,6 @@ CFLAGS+=-DDGAMELAUNCH
 CFLAGS+=-DLIVELOG_ENABLE
 CFLAGS+=-DDUMPLOG
 CFLAGS+=-DDUMPHTML
-CFLAGS+=-DSCORE_ON_BOTL
 
 # when building liblua.a, avoid warning that use of tmpnam() should be
 # replaced by mkstemp(); the lua code doesn't use nethack's config.h so

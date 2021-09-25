@@ -53,7 +53,7 @@ MAXPLAYERS=0
 
 # If not null, added to string "To get local support, " in the support
 # information help.
-SUPPORT=Contact K2 or Antigulp on libera irc channel #hardfought
+SUPPORT=Contact K2 or Antigulp on libera.chat irc channel #hardfought
 
 # If not null, displayed at the end of a panic-save sequence.
 #RECOVER=Run the recover program.
@@ -65,7 +65,7 @@ SUPPORT=Contact K2 or Antigulp on libera irc channel #hardfought
 # Uncomment the next line to enable some accessibility features such
 # as S_hero_override and S_pet_override symbols for screen readers
 # in the user config file.
-#ACCESSIBILITY=1
+ACCESSIBILITY=1
 
 # Uncomment to disable savefile UID checking.
 #CHECK_SAVE_UID=0
@@ -129,12 +129,12 @@ LLC_TURNS=3000
 #   %D current time, YYYYMMDDhhmmss format
 #   %n player name
 #   %N first character of player name
-DUMPLOGFILE=/dgldir/userdata/%N/%n/nethack/dumplog/%t.nh.txt
+DUMPLOGFILE=/dgldir/userdata/%N/%n/splicehack/dumplog/%t.splice.txt
 
 # End of game HTML dump.
 # Only available if NetHack was compiled with DUMPHTML
 # Allows placeholders as above.
-DUMPHTMLFILE=/dgldir/userdata/%N/%n/nethack/dumplog/%t.nh.html
+DUMPHTMLFILE=/dgldir/userdata/%N/%n/splicehack/dumplog/%t.splice.html
 
 # Number of bones file pools.
 # The pool you belong to is determined at game start. You will
