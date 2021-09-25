@@ -861,9 +861,8 @@ mattacku(register struct monst *mtmp)
                     if (mon_wield_item(mtmp) != 0)
                         break;
                 }
-                if (cursed_weapon_proc(mtmp, &g.youmonst) == 1) {
-                    sum[i] |= MM_AGR_DIED;
-                    break;
+                if (cursed_weapon_proc(mtmp, &g.youmonst)) {
+                    return 1;
                 }
                 if (foundyou) {
                     mon_currwep = MON_WEP(mtmp);
@@ -2824,6 +2823,9 @@ calculate_flankers(struct monst *magr, struct monst *mdef)
 
     if (magr == &g.youmonst) youattack = TRUE;
     if (mdef == &g.youmonst) youdefend = TRUE;
+
+    if (!magr || !mdef)
+        return FALSE;
     
     /* Attacker location */
     if (youattack) {
@@ -2857,6 +2859,9 @@ calculate_flankers(struct monst *magr, struct monst *mdef)
 
     if (MON_AT(xt, yt))
         flanker = m_at(xt, yt);
+    else
+        return FALSE;
+    
     if (flanker == &g.youmonst) youflanker = TRUE;
 
     /* Depending on who the attacker and flanker are, return a boolean. */
