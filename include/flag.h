@@ -39,6 +39,7 @@ struct flag {
     boolean implicit_uncursed; /* maybe omit "uncursed" status in inventory */
     boolean ins_chkpt;       /* checkpoint as appropriate; INSURANCE */
     boolean invlet_constant; /* let objects keep their inventory symbol */
+    boolean invweight;       /* show item weights in inventory */
     boolean legacy;          /* print game entry "story" */
     boolean lit_corridor;    /* show a dark corr as lit if it is in sight */
     boolean mention_decor;   /* give feedback for unobscured furniture */
@@ -245,6 +246,7 @@ struct instance_flags {
     boolean echo;             /* 1 to echo characters */
     boolean force_invmenu;    /* always menu when handling inventory */
     boolean hilite_pile;      /* mark piles of objects with a hilite */
+    boolean killedby;         /* always print 'killed by' when murdered */
     boolean menu_head_objsym; /* Show obj symbol in menu headings */
     boolean menu_overlay;     /* Draw menus over the map */
     boolean menu_requested;   /* Flag for overloaded use of 'm' prefix
@@ -314,7 +316,6 @@ struct instance_flags {
     boolean cmdassist;       /* provide detailed assistance for some comnds */
     boolean fireassist;      /* autowield launcher when using fire-command */
     boolean time_botl;       /* context.botl for 'time' (moves) only */
-    boolean wizweight;       /* display weight of everything in wizard mode */
     boolean wizmgender;      /* test gender info from core in window port */
     boolean msg_is_alert;    /* suggest windowport should grab player's attention
                               * and request <TAB> acknowlegement */
