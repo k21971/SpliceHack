@@ -1,4 +1,50 @@
 #                             Splicehack-Rewrite
+
+##                             Version 1.1.0
+
+### Monster Changes
+- Angels and gold dragons emit radius 4 light.
+
+### Dungeon Changes
+- Ludios spawns as soon as it is able to, reducing chance that it never spawns.
+- New "kitchen" themed room with food, cooking implements, sinks and furnaces.
+- Orctown
+  - One set of bars is replaced with a boulder. Entering is a bit easier for the reckless.
+  - A few dead shopkeepers' wands are only partially-used. They are underneath boulders.
+  - The orctown kitchen has even more supplies in the boxes.
+  - The dead priest at the altar has appropriate loot (robe, spellbooks, etc).
+
+### Forging
+- Added a number of new recipes, courtesy of Riker.
+
+### Object Changes
+- Hallucination protects against all gaze attacks.
+- Eyes of the Overworld protect against all gaze attacks.
+- New Object: Fruitcake
+  - Created by combining cake and a slime mold at a forge.
+  - Deals massive damage when thrown, and comedically heavy.
+  - Eating a cursed fruitcake can cause hp loss.
+- New Object: Pumpkin Pie
+- New Object: Apple Pie
+  - Created by combining a cream pie with a pumpkin or an apple
+    respectively.
+
+### QoL
+- Colored flashes BUC-identify contents when when container hits altar
+- Removed the Mysterious Force.
+
+### Small Tweaks / Bugfixes
+- Scrolls in the Discovery menu were associated with the first monster from monst.c. Seen when renaming a "scroll - giant fly". Suppressed otemp.corpsenm.
+- Most SLASH'EM gaze attacks that didn't check for cancellation (and EotO) now do so.
+- Decks of Fate are less common in barracks relative to normal decks of cards.
+- Healer pets don't attack peacefuls. They still *heal* peacefuls.
+- Learning your weapon's enchantment has more emotionless messaging
+- Tone down amount of item destruction for players with Flaming/Freezing Fist skills
+- Fixed some materials having improper or undefined weights.
+- Reduced message spam when gaining a number of class skills at once.
+- The option to show object weight defaults to off.
+
+
 ##                             Version 1.0.0
 
 *note- some items and monsters were implemented in older versions of splicehack.*
@@ -180,6 +226,7 @@ in its own way.
 - Sokoban has new levels: they are listed on nethackwiki.com as [1C](https://nethackwiki.com/wiki/Sokoban_Level_1c), [1F](https://nethackwiki.com/wiki/Sokoban_Level_1f), [1H](https://nethackwiki.com/wiki/Sokoban_Level_1h), [3E](https://nethackwiki.com/wiki/Sokoban_Level_3e), and [4D](https://nethackwiki.com/wiki/Sokoban_Level_4d)
 - The second floor of Sokoban has been upgraded to demogorgon22's Lokoban.
 - Hitting a tree with a death ray results in a dead tree.
+
 #### Furnaces
 - Furnaces can be used to combine items. While at a furnace, the player can use the #forge command
   to combine two items into one more powerful item.

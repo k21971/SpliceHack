@@ -583,7 +583,7 @@ lookat(int x, int y, char *buf, char *monbuf)
             break;
         case S_pool:
             Sprintf(eos(buf), (levl[x][y].splatpm) ? "bloody " : "");
-            Sprintf(eos(buf), waterbody_name(x, y));
+            Sprintf(eos(buf), "%s", waterbody_name(x, y));
             printed_blood = TRUE;
             break;
         case S_stone:
@@ -1169,8 +1169,11 @@ add_obj_info(winid datawin, short otyp)
                 case FORTUNE_COOKIE:
                 case EGG:
                 case CREAM_PIE:
+                case APPLE_PIE:
+                case PUMPKIN_PIE:
                 case CANDY_BAR:
                 case SLICE_OF_CAKE:
+                case FRUITCAKE:
                 case LUMP_OF_ROYAL_JELLY:
                     OBJPUTSTR("Is vegetarian but not vegan.");
                     break;

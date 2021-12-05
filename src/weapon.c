@@ -128,6 +128,11 @@ static NEARDATA const char kebabable[] = { S_XORN, S_DRAGON, S_JABBERWOCK,
 static void
 give_may_advance_msg(int skill)
 {
+    if (!g.context.skip_enhance_msg) {
+        g.context.skip_enhance_msg = TRUE;
+    } else {
+        return;
+    }
     You_feel("more confident in your %sskills.",
              (skill == P_NONE) ? ""
                  : (skill <= P_LAST_WEAPON) ? "weapon "
@@ -573,7 +578,7 @@ dmgval(struct obj *otmp, struct monst *mon)
     struct permonst *ptr = mon->data;
     boolean Is_weapon = (otmp->oclass == WEAPON_CLASS || is_weptool(otmp));
 
-    if (otyp == CREAM_PIE)
+    if (otyp == CREAM_PIE || otyp == APPLE_PIE || otyp == PUMPKIN_PIE)
         return 0;
 
     if (bigmonst(ptr) && objects[otyp].oc_wldam) {
@@ -956,7 +961,7 @@ static NEARDATA const int rwep[] = {
     SHURIKEN, LIGHT_ARROW, YA, ELVEN_ARROW, DARK_ELVEN_ARROW,
     ARROW, ORCISH_ARROW,
     CROSSBOW_BOLT, ELVEN_DAGGER, DARK_ELVEN_DAGGER, DAGGER, ORCISH_DAGGER, KNIFE,
-    FLINT, ROCK, LOADSTONE, LUCKSTONE, DART, PINEAPPLE,
+    FLINT, ROCK, LOADSTONE, LUCKSTONE, DART, FRUITCAKE, PINEAPPLE,
     /* CHAKRAM, BOOMERANG, */ CREAM_PIE
 };
 
