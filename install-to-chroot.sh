@@ -22,9 +22,9 @@ COMPRESSBIN="/bin/gzip"
 NH_GIT="/home/build/SpliceHack"
 NH_BRANCH="master"
 # HACKDIR from include/config.h; aka nethack subdir inside chroot
-NHSUBDIR="splicehack-1.1.0"
+NHSUBDIR="splicehack-1.2.0"
 # VAR_PLAYGROUND from include/unixconf.h
-NH_VAR_PLAYGROUND="/splicehack-1.1.0/var/"
+NH_VAR_PLAYGROUND="/splicehack-1.2.0/var/"
 # only define this if dgl was configured with --enable-sqlite
 SQLITE_DBFILE="/dgldir/dgamelaunch.db"
 # END OF CONFIG
@@ -51,8 +51,8 @@ set -e
 umask 022
 
 echo "Creating inprogress and extrainfo directories"
-mkdir -p "$NAO_CHROOT/dgldir/inprogress-spl110"
-chown "$USRGRP" "$NAO_CHROOT/dgldir/inprogress-spl110"
+mkdir -p "$NAO_CHROOT/dgldir/inprogress-spl120"
+chown "$USRGRP" "$NAO_CHROOT/dgldir/inprogress-spl120"
 mkdir -p "$NAO_CHROOT/dgldir/extrainfo-spl"
 chown "$USRGRP" "$NAO_CHROOT/dgldir/extrainfo-spl"
 
