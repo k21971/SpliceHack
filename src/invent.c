@@ -1,4 +1,4 @@
-/* NetHack 3.7	invent.c	$NHDT-Date: 1620861205 2021/05/12 23:13:25 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.331 $ */
+/* NetHack 3.7	invent.c	$NHDT-Date: 1629409876 2021/08/19 21:51:16 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.339 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Derek S. Ray, 2015. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -31,7 +31,7 @@ static boolean this_type_only(struct obj *);
 static void dounpaid(void);
 static struct obj *find_unpaid(struct obj *, struct obj **);
 static void menu_identify(int);
-static boolean tool_in_use(struct obj *);
+static boolean tool_being_used(struct obj *);
 static int adjust_ok(struct obj *);
 static int adjust_gold_ok(struct obj *);
 static char obj_to_let(struct obj *);
@@ -930,12 +930,16 @@ addinv_core0(struct obj *obj, struct obj *other_obj,
     obj->where = OBJ_INVENT;
 
     /* fill empty quiver if obj was thrown */
-    if (flags.pickup_thrown && !uquiver && obj_was_thrown
+    if (obj_was_thrown && flags.pickup_thrown && !uquiver
         /* if Mjollnir is thrown and fails to return, we want to
-           auto-pick it when we move to its spot, but not into quiver;
-           aklyses behave like Mjollnir when thrown while wielded, but
-           we lack sufficient information here make them exceptions */
-        && obj->oartifact != ART_MJOLLNIR
+           auto-pick it when we move to its spot, but not into quiver
+           because it needs to be wielded to be re-thrown;
+           aklys likewise because player using 'f' to throw it might
+           not notice that it isn't wielded until it fails to return
+           several times; we never auto-wield, just omit from quiver
+           so that player will be prompted for what to throw and
+           possibly realize that re-wielding is necessary */
+        && obj->oartifact != ART_MJOLLNIR && obj->otyp != AKLYS
         && (throwing_weapon(obj) || is_ammo(obj)))
         setuqwep(obj);
  added:
@@ -1084,6 +1088,7 @@ useupall(struct obj *obj)
     obfree(obj, (struct obj *) 0); /* deletes contents also */
 }
 
+/* an item in inventory is going away after being used */
 void
 useup(struct obj *obj)
 {
@@ -1101,8 +1106,9 @@ useup(struct obj *obj)
 
 /* use one charge from an item and possibly incur shop debt for it */
 void
-consume_obj_charge(struct obj *obj,
-                   boolean maybe_unpaid) /* false if caller handles shop billing */
+consume_obj_charge(
+    struct obj *obj,
+    boolean maybe_unpaid) /* false if caller handles shop billing */
 {
     if (maybe_unpaid)
         check_unpaid(obj);
@@ -1171,6 +1177,7 @@ freeinv(struct obj *obj)
     update_inventory();
 }
 
+/* drawbridge is destroying all objects at <x,y> */
 void
 delallobj(int x, int y)
 {
@@ -1202,6 +1209,7 @@ delobj(struct obj *obj)
          * are indestructible via drawbridges, and exploding
          * chests, and golem creation, and ...
          */
+        obj->in_use = 0; /* in case caller has set this to 1 */
         return;
     }
     update_map = (obj->where == OBJ_FLOOR);
@@ -2368,8 +2376,6 @@ doperminv(void)
      * (typically by typing <return> or <esc> but that's up to interface).
      */
 
-    if (iflags.debug_fuzzer)
-        return 0;
 #if 0
     /* [currently this would redraw the persistent inventory window
        whether that's needed or not, so also reset any previous
@@ -2488,7 +2494,16 @@ RESTORE_WARNING_FORMAT_NONLITERAL
 int
 ddoinv(void)
 {
-    (void) display_inventory((char *) 0, FALSE);
+    struct obj *obj;
+    winid datawin = WIN_ERR;
+
+    obj = getobj("examine", any_obj_ok, GETOBJ_PROMPT);
+    if (!obj) return 0;
+    
+    datawin = create_nhwindow(NHW_MENU);
+    add_obj_info(datawin, obj->otyp);
+    display_nhwindow(datawin, TRUE);
+    destroy_nhwindow(datawin);
     return 0;
 }
 
@@ -3299,7 +3314,7 @@ dfeature_at(int x, int y, char *buf)
     int ltyp = lev->typ, cmap = -1;
     const char *dfeature = 0;
     static char altbuf[BUFSZ];
-    stairway *stway = stairway_at(x,y);
+    stairway *stway = stairway_at(x, y);
 
     if (IS_DOOR(ltyp)) {
         switch (lev->doormask) {
@@ -3350,15 +3365,9 @@ dfeature_at(int x, int y, char *buf)
                 a_gname(),
                 align_str(Amask2align(lev->altarmask & ~AM_SHRINE)));
         dfeature = altbuf;
-    } else if (stway && !stway->isladder && stway->up)
-        cmap = S_upstair; /* "staircase up" */
-    else if (stway && !stway->isladder && !stway->up)
-        cmap = S_dnstair; /* "staircase down" */
-    else if (stway && stway->isladder && stway->up)
-        cmap = S_upladder; /* "ladder up" */
-    else if (stway && stway->isladder && !stway->up)
-        cmap = S_dnladder; /* "ladder down" */
-    else if (ltyp == DRAWBRIDGE_DOWN)
+    } else if (stway) {
+        dfeature = stairs_description(stway, altbuf, TRUE);
+    } else if (ltyp == DRAWBRIDGE_DOWN)
         cmap = S_vodbridge; /* "lowered drawbridge" */
     else if (ltyp == DBWALL)
         cmap = S_vcdbridge; /* "raised drawbridge" */
@@ -3465,7 +3474,8 @@ look_here(int obj_cnt, /* obj_cnt > 0 implies that autopickup is in progress */
         }
         if (dfeature && !drift && !strcmp(dfeature, surface(u.ux, u.uy)))
             dfeature = 0; /* ice already identified */
-        if (!can_reach_floor(TRUE)) {
+        trap = t_at(u.ux, u.uy);
+        if (!can_reach_floor(trap && is_pit(trap->ttyp))) {
             pline("But you can't reach it!");
             return 0;
         }
@@ -3850,8 +3860,9 @@ dopramulet(void)
     return 0;
 }
 
+/* is 'obj' a tool that's in use?  can't simply check obj->owornmask */
 static boolean
-tool_in_use(struct obj *obj)
+tool_being_used(struct obj *obj)
 {
     if ((obj->owornmask & (W_TOOL | W_SADDLE)) != 0L)
         return TRUE;
@@ -3870,7 +3881,7 @@ doprtool(void)
     char lets[52 + 1];
 
     for (otmp = g.invent; otmp; otmp = otmp->nobj)
-        if (tool_in_use(otmp)) {
+        if (tool_being_used(otmp)) {
             /* we could be carrying more than 52 items; theoretically they
                might all be lit candles so avoid potential lets[] overflow */
             if (ct >= (int) sizeof lets - 1)
@@ -3895,7 +3906,7 @@ doprinuse(void)
     char lets[52 + 1];
 
     for (otmp = g.invent; otmp; otmp = otmp->nobj)
-        if (is_worn(otmp) || tool_in_use(otmp)) {
+        if (is_worn(otmp) || tool_being_used(otmp)) {
             /* we could be carrying more than 52 items; theoretically they
                might all be lit candles so avoid potential lets[] overflow */
             if (ct >= (int) sizeof lets - 1)

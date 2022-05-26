@@ -331,8 +331,7 @@ hates_material(struct permonst *ptr, int material)
     else if (material == IRON || material == COLD_IRON) {
         /* cold iron: fairy/fae creatures hate it */
         return (is_elf(ptr) || ptr->mlet == S_NYMPH
-                || ptr->mlet == S_IMP
-                || ptr->mlet == S_IMP || ptr == &mons[PM_BAOBHAN_SITH]);
+                || ptr->mlet == S_IMP);
     }
     else if (material == COPPER) {
         /* copper has antibacterial and antifungal properties,
@@ -697,8 +696,8 @@ monsndx(struct permonst* ptr)
     if (ptr->omnum)
         i = ptr->omnum;
     if (i < LOW_PM || i >= NUMMONS) {
-        panic("monsndx - could not index monster (%s)",
-              fmt_ptr((genericptr_t) ptr));
+        panic("monsndx - could not index monster (%s) at (%d)%s",
+              fmt_ptr((genericptr_t) ptr), i, ptr->omnum ? ", omnum mode" : "");
         return NON_PM; /* will not get here */
     }
     return i;

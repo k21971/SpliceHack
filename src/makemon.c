@@ -696,8 +696,6 @@ m_initweap(register struct monst *mtmp)
     case S_VAMPIRE:
         if (ptr == &mons[PM_ALUCARD])
             (void) mongets(mtmp, KATANA);
-        else if (ptr == &mons[PM_BAOBHAN_SITH] && !rn2(20))
-            (void) mongets(mtmp, GOWN);
         break;
     case S_OGRE:
         if (!rn2(mm == PM_OGRE_TYRANT ? 3 : mm == PM_OGRE_LEADER ? 6 : 12))
@@ -1580,6 +1578,9 @@ makemon(register struct permonst *ptr,
 
     fakemon = cg.zeromonst;
     cc.x = cc.y = 0;
+
+    if (iflags.debug_mongen)
+        return (struct monst *) 0;
 
     /* if caller wants random location, do it here */
     if (x == 0 && y == 0) {
@@ -2980,7 +2981,6 @@ initetemplate(struct monst *mtmp, int tindex)
     /* Set the data (probably move to the newetemplate func) */
     mtmp->data = &(ETEMPLATE(mtmp)->data);
     /* mtmp->data = (ETEMPLATE(mtmp)->data_p); */
-    newsym(mtmp->mx, mtmp->my);
 }
 
 static boolean
@@ -3007,8 +3007,8 @@ is_valid_template(struct monst *mtmp, int tindex) {
         return !is_mind_flayer(mtmp->data);
     case MT_OOZING:
         return !amorphous(mtmp->data);
-    case MT_ICY_DRAKKEN:
-    case MT_FIERY_DRAKKEN:
+    case MT_DRACONIC:
+    case MT_ICY_DRACONIC:
         return !is_dragon(mtmp->data);
     case MT_EXPLOSIVE:
         return !(mtmp->data->mlet == S_EYE);
@@ -3026,6 +3026,7 @@ template_chance(struct monst *mtmp, int modifier) {
     /* Unique monsters do not receive random templates. */
     if (mtmp->data->msound == MS_LEADER
         || mtmp->data->msound == MS_NEMESIS
+        || mtmp->data == &mons[PM_LONG_WORM_TAIL]
         || unique_corpstat(mtmp->data)
         || has_etemplate(mtmp))
         return template;
@@ -3064,7 +3065,7 @@ template_chance(struct monst *mtmp, int modifier) {
 struct permonst
 apply_template(struct permonst basemon, int tindex)
 {
-    int i;
+    int i, j = 0;
     struct permonst template = montemplates[tindex];
 
     /* Additive Properties */
@@ -3085,8 +3086,9 @@ apply_template(struct permonst basemon, int tindex)
 
     /* Attacks */
     for (i = 0; i < 6; i++) {
-        if (template.mattk[i].damd)
-            basemon.mattk[i] = template.mattk[i];
+        if (!basemon.mattk[i].aatyp && !basemon.mattk[i].adtyp) {
+            basemon.mattk[i] = template.mattk[j++];
+        }
     }
 
     /* Replacement Properties */

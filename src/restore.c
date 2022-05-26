@@ -768,7 +768,7 @@ restmonsteeds(boolean ghostly)
             }
             if (!mtmp) {
                 /* steed probably died but was not cleaned up due to other issues */
-                impossible("Cannot find monster steed.");
+                /* impossible("Cannot find monster steed."); */
                 free_erid(mon);
             } else 
                 ERID(mon)->m1 = mtmp;
@@ -992,6 +992,7 @@ rest_stairs(NHFILE* nhfp)
     int buflen = 0;
     stairway stway = UNDEFINED_VALUES;
     int len = 0;
+    stairway *newst;
 
     stairway_free_all();
     while (1) {
@@ -1013,6 +1014,9 @@ rest_stairs(NHFILE* nhfp)
         }
         stairway_add(stway.sx, stway.sy, stway.up, stway.isladder,
                      &(stway.tolev));
+        newst = stairway_at(stway.sx, stway.sy);
+        if (newst)
+            newst->u_traversed = stway.u_traversed;
     }
 }
 

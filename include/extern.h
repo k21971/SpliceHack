@@ -18,6 +18,7 @@ extern char *fmt_ptr(const void *);
 
 /* ### allmain.c ### */
 
+extern void moveloop_core(void);
 extern void moveloop(boolean);
 extern void stop_occupation(void);
 extern void display_gamewindows(void);
@@ -662,6 +663,8 @@ extern unsigned int induced_align(int);
 extern boolean Invocation_lev(d_level *);
 extern xchar level_difficulty(void);
 extern schar lev_by_name(const char *);
+extern boolean known_branch_stairs(stairway *);
+extern char *stairs_description(stairway *, char *, boolean);
 extern schar print_dungeon(boolean, schar *, xchar *);
 extern char *get_annotation(d_level *);
 extern int donamelevel(void);
@@ -777,7 +780,7 @@ extern void explode(int, int, int, int, char, int);
 extern long scatter(int, int, int, unsigned int, struct obj *);
 extern void splatter_burning_oil(int, int, boolean);
 extern void explode_oil(struct obj *, int, int);
-extern int adtyp_to_expltype(int);
+extern int adtyp_to_expltype(const int);
 extern void mon_explodes(struct monst *, struct attack *);
 extern void arm_bomb(struct obj *, boolean);
 
@@ -1317,6 +1320,7 @@ extern void free_luathemes(boolean);
 extern void makecorridors(void);
 extern void add_door(int, int, struct mkroom *);
 extern void clear_level_structures(void);
+extern void level_finalize_topology(void);
 extern void mklev(void);
 extern void cellular(int, int);
 #ifdef SPECIALIZATION
@@ -1407,6 +1411,7 @@ extern struct obj *rnd_treefruit_at(int, int);
 extern void set_corpsenm(struct obj *, int);
 extern long rider_revival_time(struct obj *, boolean);
 extern void start_corpse_timeout(struct obj *);
+extern void maybe_adjust_light(struct obj *, int);
 extern void bless(struct obj *);
 extern void unbless(struct obj *);
 extern void curse(struct obj *);
@@ -1718,6 +1723,7 @@ extern boolean ureflects(const char *, const char *);
 extern void mcureblindness(struct monst *, boolean);
 extern boolean munstone(struct monst *, boolean);
 extern boolean munslime(struct monst *, boolean);
+extern boolean munengulf(struct monst *);
 
 /* ### music.c ### */
 
@@ -1961,6 +1967,7 @@ extern int dowhatdoes(void);
 extern char *dowhatdoes_core(char, char *);
 extern int dohelp(void);
 extern int dohistory(void);
+extern void add_obj_info(winid, short);
 
 /* ### xxmain.c ### */
 
@@ -2209,6 +2216,7 @@ extern long random(void);
 
 extern void learnscroll(struct obj *);
 extern char *tshirt_text(struct obj *, char *);
+extern char *hawaiian_motif(struct obj *, char *);
 extern char *apron_text(struct obj *, char *);
 extern const char *candy_wrapper_text(struct obj *);
 extern void assign_candy_wrapper(struct obj *);
@@ -2458,7 +2466,7 @@ extern void price_quote(struct obj *);
 extern void shk_chat(struct monst *);
 extern void check_unpaid_usage(struct obj *, boolean);
 extern void check_unpaid(struct obj *);
-extern void costly_gold(xchar, xchar, long);
+extern void costly_gold(xchar, xchar, long, boolean);
 extern long get_cost_of_shop_item(struct obj *, int *);
 extern int oid_price_adjustment(struct obj *, unsigned);
 extern boolean block_door(xchar, xchar);
@@ -2469,6 +2477,7 @@ extern char *shk_your(char *, struct obj *);
 extern char *Shk_Your(char *, struct obj *);
 extern void globby_bill_fixup(struct obj *, struct obj *);
 extern void globby_donation(struct obj *, struct obj *);
+extern void credit_report(struct monst *shkp, int idx, boolean silent);
 
 /* ### shknam.c ### */
 
@@ -2553,6 +2562,8 @@ extern void selection_do_ellipse(struct selectionvar *, int, int, int, int,
                                  int);
 extern void selection_do_gradient(struct selectionvar *, long, long, long,
                                   long, long, long, long, long);
+extern int lspo_reset_level(lua_State *);
+extern int lspo_finalize_level(lua_State *);
 extern void update_croom(void);
 extern const char *get_trapname_bytype(int);
 extern void l_register_des(lua_State *);

@@ -1,4 +1,4 @@
-/* NetHack 3.7	mhitu.c	$NHDT-Date: 1625446012 2021/07/05 00:46:52 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.245 $ */
+/* NetHack 3.7	mhitu.c	$NHDT-Date: 1625838648 2021/07/09 13:50:48 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.246 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -1008,6 +1008,10 @@ summonmu(struct monst *mtmp, boolean youseeit)
 boolean
 diseasemu(struct permonst *mdat)
 {
+    if (LarvaCarrier) {
+        You("feel as if your body is your own again.");
+        make_carrier(0L, FALSE);
+    }
     if (Sick_resistance) {
         You_feel("a slight illness.");
         return FALSE;
@@ -1369,8 +1373,10 @@ gulpmu(struct monst *mtmp, struct attack *mattk)
         /* u.uswldtim always set > 1 */
         u.uswldtim = (unsigned) ((tim_tmp < 2) ? 2 : tim_tmp);
         swallowed(1); /* update the map display, shows hero swallowed */
-        for (otmp2 = g.invent; otmp2; otmp2 = otmp2->nobj)
-            (void) snuff_lit(otmp2);
+        if (!flaming(mtmp->data)) {
+            for (otmp2 = g.invent; otmp2; otmp2 = otmp2->nobj)
+                (void) snuff_lit(otmp2);
+        }
     }
 
     if (mtmp != u.ustuck)

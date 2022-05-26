@@ -1,4 +1,4 @@
-/* NetHack 3.7	shk.c	$NHDT-Date: 1625277130 2021/07/03 01:52:10 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.202 $ */
+/* NetHack 3.7	shk.c	$NHDT-Date: 1629548922 2021/08/21 12:28:42 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.205 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -376,7 +376,8 @@ call_kops(register struct monst* shkp, register boolean nearshop)
         stairway *stway = g.stairs;
 
         while (stway) {
-            if (!stway->isladder && !stway->up && stway->tolev.dnum == u.uz.dnum)
+            if (!stway->isladder && !stway->up
+                && stway->tolev.dnum == u.uz.dnum)
                 break;
             stway = stway->next;
         }
@@ -550,6 +551,42 @@ u_left_shop(char* leavestring, boolean newlev)
             blkmar_guards(shkp);
         else
             call_kops(shkp, (!newlev && levl[u.ux0][u.uy0].edge));
+    }
+}
+
+void
+credit_report(struct monst *shkp, int idx, boolean silent)
+{
+    struct eshk *eshkp = ESHK(shkp);
+    static long credit_snap[2][3] = {{0L, 0L, 0L}, {0L, 0L, 0L}};
+
+    if (!idx) {
+        credit_snap[BEFORE][0] = credit_snap[NOW][0] = 0L;
+        credit_snap[BEFORE][1] = credit_snap[NOW][1] = 0L;
+        credit_snap[BEFORE][2] = credit_snap[NOW][2] = 0L;
+    } else {
+        idx = 1;
+    }
+
+    credit_snap[idx][0] = eshkp->credit;
+    credit_snap[idx][1] = eshkp->debit;
+    credit_snap[idx][2] = eshkp->loan;
+
+    if (idx && !silent) {
+        long amt = 0L;
+        const char *msg = "debt has increased";
+
+        if (credit_snap[NOW][0] < credit_snap[BEFORE][0]) {
+            amt = credit_snap[BEFORE][0] - credit_snap[NOW][0];
+            msg = "credit has been reduced";
+        } else if (credit_snap[NOW][1] > credit_snap[BEFORE][1]) {
+            amt = credit_snap[NOW][1] - credit_snap[BEFORE][1];
+        } else if (credit_snap[NOW][2] > credit_snap[BEFORE][2]) {
+            amt = credit_snap[NOW][2] - credit_snap[BEFORE][2];
+        }
+        if (amt)
+            Your("%s by %ld %s.", msg, amt, currency(amt));
+
     }
 }
 
@@ -945,7 +982,8 @@ shop_keeper(char rmno)
                        (int) rmno,
                        (int) g.rooms[rmno - ROOMOFFSET].rtype,
                        shkp->mnum,
-                       /* [real shopkeeper name is kept in ESHK, not MGIVENNAME] */
+                       /* [real shopkeeper name is kept in ESHK,
+                          not MGIVENNAME] */
                        has_mgivenname(shkp) ? MGIVENNAME(shkp) : "anonymous");
             /* not sure if this is appropriate, because it does nothing to
                correct the underlying g.rooms[].resident issue but... */
@@ -1051,11 +1089,12 @@ obfree(register struct obj* obj, register struct obj* merge)
         if (!bpm) {
             /* this used to be a rename */
             /* !merge already returned */
-            impossible("obfree: not on bill, %s = (%d,%d,%ld,%d) (%d,%d,%ld,%d)??",
-                        "otyp,where,quan,unpaid",
-                        obj->otyp, obj->where, obj->quan, obj->unpaid ? 1 : 0,
-                        merge->otyp, merge->where, merge->quan,
-                            merge->unpaid ? 1 : 0);
+            impossible(
+                   "obfree: not on bill, %s = (%d,%d,%ld,%d) (%d,%d,%ld,%d)?",
+                       "otyp,where,quan,unpaid",
+                       obj->otyp, obj->where, obj->quan, obj->unpaid ? 1 : 0,
+                       merge->otyp, merge->where, merge->quan,
+                       merge->unpaid ? 1 : 0);
             return;
         } else {
             /* this was a merger */
@@ -2086,7 +2125,8 @@ inherits(struct monst* shkp, int numsk, int croaked, boolean silently)
             if (!silently)
                 pline("%s %s the %ld %s %sowed %s.", Shknam(shkp),
                       takes, loss, currency(loss),
-                      strncmp(eshkp->customer, g.plname, PL_NSIZ) ? "" : "you ",
+                      strncmp(eshkp->customer, g.plname, PL_NSIZ) ? ""
+                        : "you ",
                       noit_mhim(shkp));
             /* shopkeeper has now been paid in full */
             pacify_shk(shkp);
@@ -2492,7 +2532,7 @@ contained_cost(
 long
 contained_gold(
     struct obj *obj,
-    boolean even_if_unknown) /* True: all gold; False: limit to known contents */
+    boolean even_if_unknown) /* T: all gold; F: limit to known contents */
 {
     register struct obj *otmp;
     register long value = 0L;
@@ -2736,7 +2776,7 @@ unpaid_cost(
 }
 
 static void
-add_one_tobill(struct obj* obj, boolean dummy, struct monst* shkp)
+add_one_tobill(struct obj *obj, boolean dummy, struct monst *shkp)
 {
     struct eshk *eshkp;
     struct bill_x *bp;
@@ -2748,6 +2788,11 @@ add_one_tobill(struct obj* obj, boolean dummy, struct monst* shkp)
 
     if (eshkp->billct == BILLSZ) {
         You("got that for free!");
+        /*
+         * FIXME:
+         *  What happens when this is a dummy object?  It won't be on any
+         *  object list.
+         */
         return;
     }
 
@@ -2785,6 +2830,13 @@ add_to_billobjs(struct obj* obj)
     obj->nobj = g.billobjs;
     g.billobjs = obj;
     obj->where = OBJ_ONBILL;
+
+    /* if hero drinks a shop-owned potion, it will have been flagged
+       in_use by dodrink/dopotion but isn't being be used up yet because
+       it stays on the bill; only object sanity checking actually cares */
+    obj->in_use = 0;
+    /* ... same for bypass by destroy_item */
+    obj->bypass = 0;
 }
 
 /* recursive billing of objects within containers. */
@@ -2850,7 +2902,8 @@ shk_names_obj(
 /* decide whether a shopkeeper thinks an item belongs to her */
 boolean
 billable(
-    struct monst **shkpp, /* in: non-null if shk has been validated; out: shk */
+    struct monst **shkpp, /* in: non-null if shk has been validated;
+                           * out: shk */
     struct obj *obj,
     char roomno,
     boolean reset_nocharge)
@@ -2902,7 +2955,7 @@ addtobill(
         return;
 
     if (obj->oclass == COIN_CLASS) {
-        costly_gold(obj->ox, obj->oy, obj->quan);
+        costly_gold(obj->ox, obj->oy, obj->quan, silent);
         return;
     } else if (ESHK(shkp)->billct == BILLSZ) {
         if (!silent)
@@ -2936,7 +2989,7 @@ addtobill(
         ltmp += cltmp;
 
         if (gltmp) {
-            costly_gold(obj->ox, obj->oy, gltmp);
+            costly_gold(obj->ox, obj->oy, gltmp, silent);
             if (!ltmp)
                 return;
         }
@@ -3267,7 +3320,7 @@ void
 donate_gold(
     long gltmp,
     struct monst *shkp,
-    boolean selling) /* True: dropped in shop; False: kicked and landed in shop */
+    boolean selling) /* T: dropped in shop; F: kicked and landed in shop */
 {
     struct eshk *eshkp = ESHK(shkp);
 
@@ -5027,11 +5080,11 @@ shopdig(register int fall)
             if (!Deaf && !muteshk(shkp)) {
                 if (u.utraptype == TT_PIT)
                     verbalize(
-                        "Be careful, %s, or you might fall through the floor.",
-                        usir());
+                       "Be careful, %s, or you might fall through the floor.",
+                              usir());
                 else
                     verbalize("Please, %s, do not damage the floor here!",
-                        usir());
+                              usir());
             }
         }
         if (Role_if(PM_KNIGHT)) {
@@ -5549,7 +5602,7 @@ static long
 cost_per_charge(
     struct monst *shkp,
     struct obj *otmp,
-    boolean altusage) /* some items have an "alternate" use with different cost */
+    boolean altusage) /* some items have "alternate" use with different cost */
 {
     long tmp = 0L;
 
@@ -5660,7 +5713,7 @@ check_unpaid(struct obj* otmp)
 }
 
 void
-costly_gold(register xchar x, register xchar y, register long amount)
+costly_gold(xchar x, xchar y, long amount, boolean silent)
 {
     register long delta;
     register struct monst *shkp;
@@ -5673,19 +5726,23 @@ costly_gold(register xchar x, register xchar y, register long amount)
 
     eshkp = ESHK(shkp);
     if (eshkp->credit >= amount) {
-        if (eshkp->credit > amount)
-            Your("credit is reduced by %ld %s.", amount, currency(amount));
-        else
-            Your("credit is erased.");
+        if (!silent) {
+            if (eshkp->credit > amount)
+                Your("credit is reduced by %ld %s.", amount, currency(amount));
+            else
+                Your("credit is erased.");
+        }
         eshkp->credit -= amount;
     } else {
         delta = amount - eshkp->credit;
-        if (eshkp->credit)
-            Your("credit is erased.");
-        if (eshkp->debit)
-            Your("debt increases by %ld %s.", delta, currency(delta));
-        else
-            You("owe %s %ld %s.", shkname(shkp), delta, currency(delta));
+        if (!silent) {
+            if (eshkp->credit)
+                Your("credit is erased.");
+            if (eshkp->debit)
+                Your("debt increases by %ld %s.", delta, currency(delta));
+            else
+                You("owe %s %ld %s.", shkname(shkp), delta, currency(delta));
+        }
         eshkp->debit += delta;
         eshkp->loan += delta;
         eshkp->credit = 0L;

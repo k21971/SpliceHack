@@ -10,6 +10,7 @@
 #       Visual Studio Compilers Tested:
 #            - Microsoft Visual Studio 2017 Community Edition
 #            - Microsoft Visual Studio 2019 Community Edition
+#            - Microsoft Visual Studio 2022 Community Edition Preview 2
 #
 #==============================================================================
 #   This is used for building two distinct executables of NetHack:
@@ -99,7 +100,7 @@ GAMEDIR = ..\binary               # Default game build directory
 #    of your PDCurses C files.
 #
 #ADD_CURSES=Y
-#PDCURSES_TOP=..\lib\pdcurses
+#PDCURSES_TOP=..\lib\pdcursesmod
 #
 #------------------------------------------------------------------------------
 # OPTIONAL - zlib support (to allow compressed savefile exchange across platforms
@@ -368,12 +369,6 @@ COMCTRL = comctl32.lib
 
 KEYDLLS	= $(GAMEDIR)\nhdefkey.dll $(GAMEDIR)\nh340key.dll $(GAMEDIR)\nhraykey.dll
 
-TILEUTIL16  = $(UTIL)\tile2bmp.exe
-TILEBMP16   = $(SRC)\tiles.bmp
-
-TILEUTIL32  = $(UTIL)\til2bm32.exe
-TILEBMP32   = $(SRC)\tiles32.bmp
-
 SOUND = $(OBJ)\ntsound.o
 
 VVOBJ  = $(O)version.o
@@ -492,11 +487,12 @@ CONFIG_H = $(INCL)\config.h $(INCL)\patchlevel.h \
 		$(INCL)\windconf.h
 
 HACK_H = $(INCL)\hack.h $(CONFIG_H) $(INCL)\lint.h $(INCL)\align.h \
-		$(INCL)\dungeon.h $(INCL)\monsym.h $(INCL)\mkroom.h \
+		$(INCL)\dungeon.h $(INCL)\mkroom.h \
 		$(INCL)\objclass.h $(INCL)\youprop.h $(INCL)\prop.h \
 		$(INCL)\permonst.h $(INCL)\monattk.h \
 		$(INCL)\monflag.h $(INCL)\mondata.h $(INCL)\pm.h \
-		$(INCL)\wintype.h $(INCL)\context.h $(INCL)\rm.h \
+		$(INCL)\wintype.h $(INCL)\context.h \
+		$(INCL)\sym.h $(INCL)\defsym.h $(INCL)\rm.h \
 		$(INCL)\botl.h $(INCL)\rect.h \
 		$(INCL)\region.h $(INCL)\decl.h $(INCL)\quest.h \
 		$(INCL)\spell.h $(INCL)\color.h $(INCL)\obj.h \
@@ -547,8 +543,10 @@ rc=Rc
 # Visual Studio we are using.  We set VSVER to 0000 to flag any version that
 # is too old or untested.
 #
-#NMAKE version 1428293370 from latest VS 2019 (Feb 9, 2021 version 16.8.5)
+# Recently tested versions:
 #NMAKE version 1429300370 from latest VS 2019 (May 25, 2021 version 16.10.0)
+#NMAKE version 1429300400 from latest VS 2019 (July 20, 2021 version 16.10.4)
+#NMAKE version 1430304010 from latest VS 2022 preview 2 (July 2021)
 
 #!MESSAGE $(MAKEFLAGS)
 #!MESSAGE $(MAKEDIR)
@@ -559,6 +557,7 @@ MAKEVERSION=$(MAKEVERSION: =)
 #!MESSAGE $(_NMAKE_VER)
 #!MESSAGE $(MAKEVERSION)
 
+VSSPECIAL=
 VSNEWEST=2019
 !IF ($(MAKEVERSION) < 1000000000)
 VSVER=0000		#untested ancient version
@@ -572,15 +571,19 @@ VSVER=2013
 VSVER=2015
 !ELSEIF ($(MAKEVERSION) > 1411000000) && ($(MAKEVERSION) < 1416270312)
 VSVER=2017
-!ELSEIF ($(MAKEVERSION) > 1416270311) && ($(MAKEVERSION) < 1429300371)
+!ELSEIF ($(MAKEVERSION) > 1416270311) && ($(MAKEVERSION) < 1429300401)
 VSVER=$(VSNEWEST)
-!ELSEIF ($(MAKEVERSION) > 1429300370)
+!ELSEIF ($(MAKEVERSION) > 1429300400) && ($(MAKEVERSION) < 1430304011)
+VSVER=2022
+VSNEWEST=2022
+VSSPECIAL=preview
+!ELSEIF ($(MAKEVERSION) > 1429300400)
 VSVER=2999              #untested future version
 !ENDIF
 
 !IF ($(VSVER) >= 2012)
 !IF ($(VSVER) <= $(VSNEWEST))
-!MESSAGE Autodetected Visual Studio $(VSVER)
+!MESSAGE Autodetected Visual Studio $(VSVER) $(VSSPECIAL)
 !ENDIF
 !ENDIF
 !IF ($(VSVER) == 2999)
@@ -655,22 +658,22 @@ lcommon= /NOLOGO /INCREMENTAL:NO
 
 !IF "$(DEBUGINFO)" == "Y"
 ldebug = /DEBUG
-cflags1=$(ccommon) $(cdebug)
+ctmpflags1=$(ccommon) $(cdebug)
 lflags1=$(lcommon) $(ldebug)
 !ELSE
 ldebug= /DEBUG
-cflags1=$(ccommon) $(crelease)
+ctmpflags1=$(ccommon) $(crelease)
 lflags1=$(lcommon) $(ldebug)
 !ENDIF
 
 lflags= $(lflags1)
 
 !IF "$(TARGET_CPU)" == "x86"
-cflags = $(cflags1) -D_X86_=1  -DWIN32 -D_WIN32 -W3
+ctmpflags = $(ctmpflags1) -D_X86_=1  -DWIN32 -D_WIN32 -W3
 scall  = -Gz
 
 !ELSEIF "$(TARGET_CPU)" == "x64"
-cflags = $(cflags1) -D_AMD64_=1 -DWIN64 -D_WIN64  -DWIN32 -D_WIN32 -W4
+ctmpflags = $(ctmpflags1) -D_AMD64_=1 -DWIN64 -D_WIN64  -DWIN32 -D_WIN32 -W4
 scall  =
 !ENDIF
 
@@ -686,7 +689,9 @@ scall  =
 # 4777 format string requires an argument of type �type�,
 #      but variadic argument �position� has type �type�
 # 4820 padding in struct
-cflags = $(cflags:-W3=-W4) -wd4100 -wd4244 -wd4245 -wd4310 -wd4706 -w44774 -w44777 -wd4820
+ctmpflags = $(ctmpflags:-W3=-W4) -wd4100 -wd4244 -wd4245 -wd4310 -wd4706 -w44777 -wd4820
+cppflags = $(ctmpflags)
+cflags = $(ctmpflags) -w44774
 !ENDIF
 
 #More verbose warning output options below
@@ -731,6 +736,7 @@ INCLDIR= /I..\include /I..\sys\windows $(LUAINCL)
 #==========================================
 
 cflagsBuild = $(cflags) $(INCLDIR) $(WINPFLAG) $(DLBFLG) -DSAFEPROCS
+cppflagsBuild = $(cppflags) $(INCLDIR) $(WINPFLAG) $(DLBFLG) -DSAFEPROCS
 lflagsBuild = $(lflags) $(conlibs) $(MACHINE)
 
 #==========================================
@@ -769,7 +775,7 @@ DLB =
 	@$(cc) $(cflagsBuild) $(CROSSCOMPILE) $(CROSSCOMPILE_TARGET)  -Fo$@  $<
 
 {$(SSYS)}.cpp{$(OBJ)}.o:
-	@$(cc) $(cflagsBuild) $(CROSSCOMPILE) $(CROSSCOMPILE_TARGET) /EHsc -Fo$@  $<
+	@$(cc) $(cppflagsBuild) $(CROSSCOMPILE) $(CROSSCOMPILE_TARGET) /EHsc -Fo$@  $<
 
 #==========================================
 # Rules for files in sys\windows
@@ -1045,7 +1051,7 @@ $(O)sp_lev.tag:
 	echo sp_levs done > $(O)sp_lev.tag
 
 $(O)utility.tag: $(INCL)\nhlua.h $(INCL)\date.h $(INCL)\onames.h $(INCL)\pm.h \
-		$(TILEUTIL16)
+		$(U)tile2bmp.exe
 	     @echo utilities made >$@
 	     @echo utilities made.
 
@@ -1060,7 +1066,8 @@ $(INCL)\nhlua.h:
 tileutil: $(U)gif2txt.exe $(U)gif2tx32.exe $(U)txt2ppm.exe
 	@echo Optional tile development utilities are up to date.
 
-$(O)SpliceHackW.res: $(TILEBMP16) $(MSWIN)\SpliceHackW.rc $(MSWIN)\mnsel.bmp \
+$(O)SpliceHackW.res: $(SRC)\tiles.bmp $(MSWIN)\SpliceHackW.rc \
+	$(MSWIN)\mnsel.bmp \
 	$(MSWIN)\mnselcnt.bmp $(MSWIN)\mnunsel.bmp \
 	$(MSWIN)\petmark.bmp $(MSWIN)\pilemark.bmp $(MSWIN)\ridingmark.bmp $(MSWIN)\templatemark.bmp $(MSWIN)\NetHack.ico \
 	$(MSWIN)\rip.bmp $(MSWIN)\splash.bmp
@@ -1088,7 +1095,7 @@ $(U)makedefs.exe:	$(MAKEDEFSOBJS)
 	@$(link) $(lflagsBuild) /PDB:"$(O)$(@B).PDB" /MAP:"$(O)$(@B).MAP" -out:$@ $(MAKEDEFSOBJS)
 
 $(O)makedefs.o: $(U)makedefs.c $(SRC)\mdlib.c $(CONFIG_H) $(INCL)\permonst.h \
-		$(INCL)\objclass.h $(INCL)\monsym.h \
+		$(INCL)\objclass.h $(INCL)\sym.h $(INCL)\defsym.h \
 		$(INCL)\artilist.h $(INCL)\dungeon.h $(INCL)\obj.h \
 		$(INCL)\monst.h $(INCL)\you.h $(INCL)\flag.h \
 		$(INCL)\dlb.h
@@ -1378,14 +1385,9 @@ $(U)txt2ppm.exe: $(PPMWRITERS) $(TEXT_IO)
 		)
 <<
 
-$(TILEBMP16): $(TILEUTIL16) $(TILEFILES)
+$(SRC)\tiles.bmp: $(U)tile2bmp.exe $(TILEFILES)
 	@echo Creating 16x16 binary tile files (this may take some time)
-	@$(U)tile2bmp $(TILEBMP16)
-
-#$(TILEBMP32): $(TILEUTIL32) $(TILEFILES32)
-#	@echo Creating 32x32 binary tile files (this may take some time)
-#	@$(U)til2bm32 $(TILEBMP32)
-
+	@$(U)tile2bmp $@
 
 $(U)tile2bmp.exe: $(O)tile2bmp.o $(TEXT_IO)
     	@echo Linking $(@:\=/)
@@ -1406,8 +1408,8 @@ $(U)til2bm32.exe: $(O)til2bm32.o $(TEXT_IO32)
 $(O)tile2bmp.o: $(WSHR)\tile2bmp.c $(HACK_H) $(TILE_H) $(MSWSYS)\win32api.h
 	@$(cc) $(cflagsBuild) $(CROSSCOMPILE) -I$(WSHR) /DPACKED_FILE /Fo$@ $(WSHR)\tile2bmp.c
 
-$(O)til2bm32.o: $(WSHR)\tile2bmp.c $(HACK_H) $(TILE_H) $(MSWSYS)\win32api.h
-	@$(cc) $(cflagsBuild) $(CROSSCOMPILE) -I$(WSHR) /DPACKED_FILE /DTILE_X=32 /DTILE_Y=32 /Fo$@ $(WSHR)\tile2bmp.c
+#$(O)til2bm32.o: $(WSHR)\tile2bmp.c $(HACK_H) $(TILE_H) $(MSWSYS)\win32api.h
+#	@$(cc) $(cflagsBuild) $(CROSSCOMPILE) -I$(WSHR) /DPACKED_FILE /DTILE_X=32 /DTILE_Y=32 /Fo$@ $(WSHR)\tile2bmp.c
 
 $(U)tile2x11.exe: $(O)tile2x11.o $(O)tiletext.o $(O)tiletxt.o $(O)alloc.o \
 		$(O)panic.o $(O)monst.o $(O)objects.o
@@ -1578,18 +1580,19 @@ $(O)panic.o:  $(U)panic.c $(CONFIG_H)
 $(O)drawing_host.o: drawing.c $(CONFIG_H)
 	@$(cc) $(cflagsBuild) $(CROSSCOMPILE) -Fo$@ drawing.c
 
-$(O)drawing.o: drawing.c $(CONFIG_H) $(INCL)\color.h $(INCL)\rm.h \
-		$(INCL)\objclass.h $(INCL)\monsym.h
+$(O)drawing.o: drawing.c $(CONFIG_H) $(INCL)\color.h \
+		$(INCL)\sym.h $(INCL)\defsym.h $(INCL)\rm.h \
+		$(INCL)\objclass.h
 	@$(cc) $(cflagsBuild) -Fo$@ drawing.c
 
 $(O)monst_host.o: monst.c $(CONFIG_H) $(INCL)\permonst.h $(INCL)\align.h \
-		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\monsym.h \
-		$(INCL)\color.h
+		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\sym.h \
+		$(INCL)\defsym.h $(INCL)\color.h
 	@$(cc) $(cflagsBuild) -Fo$@ monst.c
 
 $(O)monst.o: monst.c $(CONFIG_H) $(INCL)\permonst.h $(INCL)\align.h \
-		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\monsym.h \
-		$(INCL)\color.h
+		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\sym.h \
+		$(INCL)\defsym.h $(INCL)\color.h
 	@$(cc) $(cflagsBuild) -Fo$@ monst.c
 
 $(O)objects_host.o: objects.c $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h \
@@ -1699,7 +1702,6 @@ clean:
 	if exist $(SRC)\*.lnk      del $(SRC)\*.lnk
 	if exist $(SRC)\*.map      del $(SRC)\*.map
 	if exist $(O)install.tag   del $(O)install.tag
-	if exist $(O)console.res  del $(O)console.res
 	if exist $(O)dlb.MAP      del $(O)dlb.MAP
 	if exist $(O)dlb.PDB      del $(O)dlb.PDB
 	if exist $(O)gamedir.tag  del $(O)gamedir.tag
@@ -1726,8 +1728,10 @@ clean:
 	if exist $(O)sp_lev.tag   del $(O)sp_lev.tag
 	if exist $(O)uudecode.MAP del $(O)uudecode.MAP
 	if exist $(O)uudecode.PDB del $(O)uudecode.PDB
-	if exist $(TILEBMP16)        del $(TILEBMP16)
-	if exist $(TILEBMP32)        del $(TILEBMP32)
+	if exist $(SRC)\tiles.bmp del $(SRC)\tiles.bmp
+	if exist $(O)console.res  del $(O)console.res
+	if exist $(O)SpliceHack.res  del $(O)SpliceHack.res
+	if exist $(O)SpliceHackW.res del $(O)SpliceHackW.res
 
 #===================================================================
 # OTHER DEPENDENCIES
@@ -2001,7 +2005,7 @@ $(O)makemon.o: makemon.c $(HACK_H)
 $(O)mcastu.o: mcastu.c $(HACK_H)
 $(O)mdlib.o: mdlib.c $(CONFIG_H) $(INCL)\permonst.h $(INCL)\align.h \
 		$(INCL)\monattk.h $(INCL)\monflag.h \
-		$(INCL)\objclass.h $(INCL)\monsym.h \
+		$(INCL)\objclass.h $(INCL)\sym.h $(INCL)\defsym.h \
 		$(INCL)\artilist.h $(INCL)\dungeon.h $(INCL)\obj.h \
 		$(INCL)\monst.h $(INCL)\mextra.h $(INCL)\you.h \
 		$(INCL)\attrib.h $(INCL)\prop.h $(INCL)\skills.h \
@@ -2018,8 +2022,8 @@ $(O)mon.o: mon.c $(HACK_H) $(INCL)\mfndpos.h
 $(O)mondata.o: mondata.c $(HACK_H)
 $(O)monmove.o: monmove.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 $(O)monst.o: monst.c $(CONFIG_H) $(INCL)\permonst.h $(INCL)\align.h \
-		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\monsym.h \
-		$(INCL)\color.h
+		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\sym.h \
+		$(INCL)\defsym.h $(INCL)\color.h
 $(O)mplayer.o: mplayer.c $(HACK_H)
 $(O)mthrowu.o: mthrowu.c $(HACK_H)
 $(O)muse.o: muse.c $(HACK_H)

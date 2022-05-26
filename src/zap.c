@@ -1,4 +1,4 @@
-/* NetHack 3.7	zap.c	$NHDT-Date: 1620413928 2021/05/07 18:58:48 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.360 $ */
+/* NetHack 3.7	zap.c	$NHDT-Date: 1626390628 2021/07/15 23:10:28 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.369 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2013. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -238,13 +238,20 @@ bhitm(struct monst *mtmp, struct obj *otmp)
         break;
     case WAN_SPEED_MONSTER:
         if (!resist(mtmp, otmp->oclass, 0, NOTELL)) {
+            if (mtmp->data == &mons[PM_HEDGEHOG]) {
+                pline("Gotta go fast!");
+                if (!mtmp->mtame) {
+                    (void) tamedog(mtmp, (struct obj *) 0);
+                    mtmp->movement += VERY_FAST;
+                    if (Hallucination) mtmp = christen_monst(mtmp, "Sanic");
+                }
+            }
             if (disguised_mimic)
                 seemimic(mtmp);
             mon_adjust_speed(mtmp, 1, otmp);
             m_dowear(mtmp, FALSE); /* might want speed boots */
         }
-        if (mtmp->mtame)
-            helpful_gesture = TRUE;
+        helpful_gesture = TRUE;
         break;
     case WAN_UNDEAD_TURNING:
     case SPE_TURN_UNDEAD:
@@ -2379,7 +2386,7 @@ bhitpile(
 int
 zappable(struct obj *wand)
 {
-    if (wand->spe < 0 || (wand->spe == 0 && rn2(121)))
+    if (wand->spe < 0 || (wand->spe == 0 && rn2(WAND_WREST_CHANCE)))
         return 0;
     if (wand->spe == 0)
         You("wrest one last charge from the worn-out wand.");
@@ -4954,7 +4961,7 @@ melt_ice(xchar x, xchar y, const char *msg)
     if (Underwater)
         vision_recalc(1);
     newsym(x, y);
-    if (cansee(x, y))
+    if (cansee(x, y) || (x == u.ux && y == u.uy))
         Norep("%s", msg);
     if ((otmp = sobj_at(BOULDER, x, y)) != 0) {
         if (cansee(x, y))
@@ -5126,8 +5133,17 @@ zap_over_floor(xchar x, xchar y, int type, boolean *shopdamage,
             }
             if (msgtxt)
                 Norep("%s", msgtxt);
-            if (lev->typ == ROOM)
+            if (lev->typ == ROOM) {
+                if ((mon = m_at(x, y)) != 0) {
+                    /* probably ought to do some hefty damage to any
+                       creature caught in boiling water;
+                       at a minimum, eels are forced out of hiding */
+                    if (is_swimmer(mon->data) && mon->mundetected) {
+                        mon->mundetected = 0;
+                    }
+                }
                 newsym(x, y);
+            }
         } else if (IS_FOUNTAIN(lev->typ)) {
             create_gas_cloud(x, y, rnd(2), 0); /* radius 1..2, no damage */
             if (see_it)

@@ -163,6 +163,7 @@ static struct trobj Ranger[] = {
 };
 static struct trobj Rogue[] = {
 #define R_DAGGERS 1
+#define R_PICKS 4
     { SHORT_SWORD, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
     { DAGGER, 0, WEAPON_CLASS, 10, 0 }, /* quan is variable */
     { LIGHT_ARMOR, 1, ARMOR_CLASS, 1, UNDEF_BLESS },
@@ -531,7 +532,6 @@ static const struct def_skill Skill_Mon[] = {
 
     { P_FLAMING_FISTS, P_GRAND_MASTER },
     { P_SHOCKING_FISTS, P_GRAND_MASTER },
-    { P_FREEZING_FISTS, P_GRAND_MASTER },
     { P_STUNNING_FIST, P_GRAND_MASTER },
     { P_DISARM, P_EXPERT },
     { P_SUNDER, P_EXPERT },
@@ -760,7 +760,7 @@ static const struct def_skill Skill_V[] = {
     { P_POWER_ATTACK, P_SKILLED },
     { P_DISARM, P_BASIC },
     { P_SUNDER, P_EXPERT },
-    { P_FREEZING_FISTS, P_EXPERT },
+    { P_FREEZING_FISTS, P_GRAND_MASTER },
     { P_NONE, 0 }
 };
 static const struct def_skill Skill_W[] = {
@@ -982,6 +982,7 @@ u_init(void)
     u.uspellprot = 0;
     adjabil(0, 1, flags.initrole, 0, 1);
     u.ulevel = u.ulevelmax = u.role_levels[flags.initrole] = 1;
+    u.ubab = role_bab();
 
     /* Init heaven or hell. */
     if (u.uroleplay.heaven_or_hell) {
@@ -1165,6 +1166,7 @@ u_init(void)
         break;
     case PM_ROGUE:
         Rogue[R_DAGGERS].trquan = rn1(10, 6);
+        Rogue[R_PICKS].trquan = rn1(15, 15);
         u.umoney0 = 0;
         ini_inv(Rogue);
         if (!rn2(5))

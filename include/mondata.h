@@ -268,7 +268,6 @@
    note that high priests and the Wizard of Yendor are flagged
    as unique even though they really aren't; that's ok here */
 #define unique_corpstat(ptr) (((ptr)->geno & G_UNIQ) != 0)
-
 #define likes_lava(ptr) \
     (ptr->omnum == PM_FIRE_ELEMENTAL || ptr->omnum == PM_SALAMANDER \
         || ptr->omnum == PM_MAGMA_ELEMENTAL)
@@ -382,8 +381,7 @@
 
 #define is_bones_monster(ptr) ((ptr)->omnum == PM_GHOST || (ptr)->omnum == PM_GHOUL        \
                                || (ptr)->omnum == PM_VAMPIRE || (ptr)->omnum == PM_WRAITH  \
-                               || (ptr)->omnum == PM_GREEN_SLIME || (ptr)->mlet == S_MUMMY \
-                               || (ptr)->omnum == PM_BAOBHAN_SITH)
+                               || (ptr)->omnum == PM_GREEN_SLIME || (ptr)->mlet == S_MUMMY)
 /* Noise that a monster makes when engaged in combat. Assume that vocalizations
  * account for some noise, so monsters capable of vocalizing make more.
  * This gets used as an argument to wake_nearto, which expects a squared value,

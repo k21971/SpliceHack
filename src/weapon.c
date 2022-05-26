@@ -1,4 +1,4 @@
-/* NetHack 3.7	weapon.c	$NHDT-Date: 1607811730 2020/12/12 22:22:10 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.89 $ */
+/* NetHack 3.7	weapon.c	$NHDT-Date: 1629243070 2021/08/17 23:31:10 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.95 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2011. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -239,22 +239,31 @@ base_hitbonus(struct obj *otmp) {
 float
 role_bab()
 {
-    switch(Role_switch) {
-    case PM_WIZARD:
-    case PM_TOURIST:
-    case PM_CONVICT:
-    case PM_HEALER:
-    case PM_CARTOMANCER:
-        return 0.5;
-    case PM_MONK:
-    case PM_ARCHEOLOGIST:
-    case PM_CLERIC:
-    case PM_ROGUE:
-    case PM_DRAGON_RIDER:
-        return 0.75;
-    default:
-        return 1;
+    int i;
+    int total = 0;
+    for (i = 0; i < NUM_ROLES; i++) {
+        if (!u.role_levels[i]) continue;
+        switch(i) {
+        case PM_WIZARD:
+        case PM_TOURIST:
+        case PM_CONVICT:
+        case PM_HEALER:
+        case PM_CARTOMANCER:
+            total += u.role_levels[i] * 0.5;
+            break;
+        case PM_MONK:
+        case PM_ARCHEOLOGIST:
+        case PM_CLERIC:
+        case PM_ROGUE:
+        case PM_DRAGON_RIDER:
+            total += u.role_levels[i] * 0.75;
+            break;
+        default:
+            total += u.role_levels[i];
+            break;
+        }
     }
+    return total;
 }
 
 int
@@ -281,7 +290,7 @@ botl_hitbonus()
     struct obj *weapon = uwep;
 
     /* tmp = abon() + u.uhitinc + maybe_polyd(g.youmonst.data->mlevel, u.ulevel); */
-    tmp = abon() + u.uhitinc + (int) (maybe_polyd(g.youmonst.data->mlevel, u.ulevel) * role_bab());
+    tmp = abon() + u.uhitinc + (int) (maybe_polyd(g.youmonst.data->mlevel, u.ubab));
 
     /* role/race adjustments */
     if (Role_if(PM_MONK) && !Upolyd) {
@@ -929,9 +938,11 @@ silver_sears(struct monst *magr UNUSED, struct monst *mdef,
 }
 
 static struct obj *oselect(struct monst *, int);
-#define Oselect(x)                      \
-    if ((otmp = oselect(mtmp, x)) != 0) \
-        return otmp;
+#define Oselect(x) \
+    do {                                        \
+        if ((otmp = oselect(mtmp, x)) != 0)     \
+            return otmp;                        \
+    } while (0)
 
 static struct obj *
 oselect(struct monst *mtmp, int x)

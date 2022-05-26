@@ -5,7 +5,7 @@
 
 #include "config.h"
 #include "permonst.h"
-#include "monsym.h"
+#include "sym.h"
 
 #define NO_ATTK    \
     {              \
@@ -100,6 +100,14 @@
     {                             \
         a1, a2, a3, a4, a5, a6    \
     }
+
+/* Utility Macros */
+/* These macros are shorthand for common phrases in the monst.c file. */
+/* An empty set of attacks. */
+#define NO_ATTKS A(NO_ATTK, NO_ATTK, NO_ATTK, \
+                   NO_ATTK, NO_ATTK, NO_ATTK)
+/* An empty size struct. */
+#define NO_SIZ SIZ(0, 0, 0, 0)
 
 /*
  *      Rule #1:        monsters of a given class are contiguous in the
@@ -1885,11 +1893,16 @@ NEARDATA struct permonst mons_init[] = {
     /* The order of the dragons is VERY IMPORTANT.  Quite a few
      * pieces of code depend on gray being first and yellow being last.
      * The code also depends on the *order* being the same as that for
-     * dragon scale mail and dragon scales in objects.c.  Baby dragons
-     * cannot confer intrinsics, to avoid polyself/egg abuse.
+     * dragon scale mail and dragon scales in objects.c.  [Also,
+     * 'tilemap' assumes that shimmering dragon follows silver dragon.]
      *
-     * As reptiles, dragons are cold-blooded and thus aren't seen
-     * with infravision.  Red dragons are the exception.
+     * Adult dragons are all lawful or chaotic; baby dragons are all
+     * neutral.  This affects monster generation on some special levels.
+     * Baby dragons cannot confer intrinsics, to avoid polyself/egg abuse.
+     *
+     * As reptiles, dragons are cold-blooded and thus aren't seen with
+     * infravision.  Red and gold dragons (also Chromatic Dragon) are
+     * the exceptions because they breathe fire.
      */
     MON("fell beast", S_DRAGON, LVL(14, 12, -2, 20, -17), G_NOGEN,
        A(ATTK(AT_CLAW, AD_PHYS, 4, 5), ATTK(AT_CLAW, AD_PHYS, 4, 5),
@@ -2073,10 +2086,10 @@ NEARDATA struct permonst mons_init[] = {
         M2_HOSTILE | M2_STRONG | M2_STALK | M2_NASTY | M2_GREEDY | M2_JEWELS | M2_MAGIC,
         0, 20, CLR_GREEN),
     MON("gold dragon", S_DRAGON, LVL(15, 9, -1, 20, 4), (G_GENO | 1),
-        A(ATTK(AT_BREA, AD_FIRE, 6, 6), ATTK(AT_BITE, AD_PHYS, 3, 8),
+        A(ATTK(AT_BREA, AD_FIRE, 4, 6), ATTK(AT_BITE, AD_PHYS, 3, 8),
           ATTK(AT_CLAW, AD_PHYS, 1, 4), ATTK(AT_CLAW, AD_PHYS, 1, 4),
           NO_ATTK, NO_ATTK),
-        SIZ(WT_DRAGON, 1500, MS_ROAR, MZ_GIGANTIC), MR_FIRE, MR_FIRE,
+        SIZ(WT_DRAGON, 1500, MS_ROAR, MZ_GIGANTIC), MR_FIRE, 0,
         M1_FLY | M1_THICK_HIDE | M1_NOHANDS | M1_SEE_INVIS | M1_OVIPAROUS |
         M1_CARNIVORE,
         M2_HOSTILE | M2_STRONG | M2_NASTY | M2_GREEDY | M2_JEWELS | M2_MAGIC,
@@ -2278,8 +2291,7 @@ NEARDATA struct permonst mons_init[] = {
                                  | M1_NOHEAD | M1_MINDLESS | M1_NOTAKE,
         M2_HOSTILE | M2_NEUTER, M3_INFRAVISIBLE, 2, CLR_RED),
     MON("shrieker", S_FUNGUS, LVL(3, 1, 7, 0, 0), (G_GENO | 1),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(100, 100, MS_SHRIEK, MZ_SMALL), MR_POISON, MR_POISON,
+        NO_ATTKS, SIZ(100, 100, MS_SHRIEK, MZ_SMALL), MR_POISON, MR_POISON,
         M1_BREATHLESS | M1_NOEYES | M1_NOLIMBS | M1_NOHEAD | M1_MINDLESS
             | M1_NOTAKE,
         M2_HOSTILE | M2_NEUTER, 0, 2, CLR_MAGENTA),
@@ -2751,6 +2763,15 @@ struct permonst _mons2[] = {
         M1_NOLIMBS | M1_SLITHY | M1_THICK_HIDE | M1_OVIPAROUS | M1_POIS
             | M1_NOTAKE | M1_OMNIVORE,
         M2_STRONG, 0, 16, CLR_GREEN),
+    MON("ha-naga", S_NAGA, LVL(20, 18, -4, 70, -2), (G_GENO | G_HELL | 1),
+        A(ATTK(AT_BITE, AD_PLYS, 2, 3), ATTK(AT_SPIT, AD_DRST, 3, 6),
+          ATTK(AT_HUGS, AD_PHYS, 4, 8), ATTK(AT_MAGC, AD_SPEL, 5, 6),
+          NO_ATTK, NO_ATTK),
+        SIZ(3200, 800, MS_MUMBLE, MZ_GIGANTIC), MR_POISON | MR_ACID | MR_FIRE,
+        MR_POISON,
+        M1_NOLIMBS | M1_SLITHY | M1_THICK_HIDE | M1_OVIPAROUS | M1_POIS
+            | M1_OMNIVORE | M1_FLY,
+        M2_STRONG | M2_FEMALE, 0, 24, CLR_BRIGHT_MAGENTA),
     /*
      * Ogres
      */
@@ -3025,21 +3046,11 @@ struct permonst _mons2[] = {
         M2_STRONG, M3_INFRAVISIBLE, 16, CLR_BLUE),
     MON("shambling horror", S_UMBER,
         LVL(10, 12, 0, 0, 0), (G_NOCORPSE | G_HELL),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(25, 25, MS_SILENT, MZ_TINY), 0, 0,
+        NO_ATTKS, SIZ(25, 25, MS_SILENT, MZ_TINY), 0, 0,
         M1_CARNIVORE, 0, M3_INFRAVISIBLE, 11, DRAGON_SILVER),
     /*
      * Vampires
      */
-    MON2("baobhan-sith", S_VAMPIRE, LVL(10, 12, 1, 25, -8),
-         (G_GENO | G_HELL | G_NOCORPSE | 1),
-         A(ATTK(AT_CLAW, AD_PHYS, 1, 8), ATTK(AT_CLAW, AD_DRLI, 1, 8), NO_ATTK,
-           NO_ATTK, NO_ATTK, NO_ATTK),
-         SIZ(WT_HUMAN, 400, MS_SEDUCE, MZ_HUMAN), MR_SLEEP | MR_POISON, 0,
-         M1_HUMANOID | M1_POIS | M1_REGEN,
-         M2_STALK | M2_HOSTILE | M2_STRONG | M2_NASTY | M2_SHAPESHIFTER |
-         M2_FEMALE,
-         M3_INFRAVISIBLE, MH_UNDEAD, 10, CLR_GREEN),
     MON2("vampire", S_VAMPIRE, LVL(10, 12, 1, 25, -8),
         (G_GENO | G_NOCORPSE | 1),
         A(ATTK(AT_CLAW, AD_PHYS, 1, 6), ATTK(AT_BITE, AD_DRLI, 1, 6), NO_ATTK,
@@ -4236,8 +4247,7 @@ struct permonst _mons2[] = {
      */
 #ifdef MAIL_STRUCTURES
     MON("mail daemon", S_DEMON, LVL(56, 24, 10, 127, 0),
-        (G_NOGEN | G_NOCORPSE),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
+        (G_NOGEN | G_NOCORPSE), NO_ATTKS,
         SIZ(600, 300, MS_SILENT, MZ_HUMAN),
         MR_FIRE | MR_COLD | MR_ELEC | MR_SLEEP | MR_POISON | MR_STONE, 0,
         M1_FLY | M1_SWIM | M1_BREATHLESS | M1_SEE_INVIS | M1_HUMANOID
@@ -4436,9 +4446,8 @@ struct permonst _mons2[] = {
      * (marking it unique prevents figurines)
      */
     MON("long worm tail", S_WORM_TAIL, LVL(0, 0, 0, 0, 0),
-        (G_NOGEN | G_NOCORPSE | G_UNIQ),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0, 0L, M2_NOPOLY, 0, 1, CLR_BROWN),
+        (G_NOGEN | G_NOCORPSE | G_UNIQ), NO_ATTKS,
+        NO_SIZ, 0, 0, 0L, M2_NOPOLY, 0, 1, CLR_BROWN),
     /* Note:
      * Worm tail must be between the normal monsters and the special
      * quest & pseudo-character ones because an optimization in the
@@ -4769,7 +4778,8 @@ struct permonst _mons2[] = {
         M3_WANTSARTI | M3_WAITFORU | M3_INFRAVISIBLE,
         MH_HUMAN, 22, HI_LORD),
     /* Multi-headed, possessing the breath attacks of all the other dragons
-     * (selected at random when attacking).
+     * (selected at random when attacking).  Despite being a superset of
+     * gold dragon, does not emit light.
      */
     MON("Chromatic Dragon", S_DRAGON, LVL(16, 12, 0, 30, -14),
         (G_NOGEN | G_UNIQ),
@@ -5085,8 +5095,7 @@ struct permonst _mons2[] = {
      * array terminator
      */
     MON("", 0, LVL(0, 0, 0, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0, 0L, 0L, 0, 0, 0)
+        NO_ATTKS, NO_SIZ, 0, 0, 0L, 0L, 0, 0, 0)
 };
 
 /* Templates that can be applied to monsters. Each template contains
@@ -5094,107 +5103,90 @@ struct permonst _mons2[] = {
    order to apply the template. */
 NEARDATA struct permonst montemplates[] = {
     MON2("elven", S_HUMAN, LVL(0, 0, 0, 0, -3), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), MR_SLEEP, MR_SLEEP,
-        M1_SEE_INVIS, 0,
+        NO_ATTKS, NO_SIZ, MR_SLEEP, MR_SLEEP, M1_SEE_INVIS, 0,
         M3_INFRAVISION | M3_INFRAVISIBLE, MH_ELF, 0, 0),
     MON2("half-elf", S_HUMAN, LVL(0, 0, 0, 0, -1), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), MR_SLEEP, MR_SLEEP,
-        0, 0,
+        NO_ATTKS, NO_SIZ, MR_SLEEP, MR_SLEEP, 0, 0,
         M3_INFRAVISION | M3_INFRAVISIBLE, MH_HUMAN | MH_ELF, 0, 0),
     MON2("gnomish", S_GNOME, LVL(0, 0, -1, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0,
-        0, 0,
+        NO_ATTKS, NO_SIZ, 0, 0, 0, 0,
         M3_INFRAVISION | M3_INFRAVISIBLE, MH_GNOME, 0, 0),
     MON2("dwarvish", S_HUMANOID, LVL(0, 0, 0, 10, 4), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0,
+        NO_ATTKS, NO_SIZ, 0, 0,
         M1_TUNNEL | M1_NEEDPICK,
         M2_STRONG | M2_JEWELS | M2_COLLECT,
         M3_INFRAVISION | M3_INFRAVISIBLE, MH_DWARF, 0, 0),
     MON2("orcish", S_ORC, LVL(0, 0, 0, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0, 0L,
+        NO_ATTKS, NO_SIZ, 0, 0, 0L,
         M2_STRONG | M2_GREEDY | M2_JEWELS,
         M3_INFRAVISION | M3_INFRAVISIBLE, MH_ORC, 0, 0),
     MON2("half orc", S_ORC, LVL(0, 1, 0, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0, 0L,
+        NO_ATTKS, NO_SIZ, 0, 0, 0L,
         M2_STRONG | M2_GREEDY | M2_JEWELS,
         M3_INFRAVISION | M3_INFRAVISIBLE, MH_ORC | MH_HUMAN, 0, 0),
     MON2("fiendish", S_DEMON, LVL(0, 0, 0, 15, -4), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), MR_FIRE, MR_FIRE,
+        NO_ATTKS, NO_SIZ, MR_FIRE, MR_FIRE,
         M1_POIS, 0, 0, MH_DEMON, 2, 0),
     MON("half-illithid", S_HUMANOID, LVL(0, 0, -3, 40, -3), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-          ATTK(AT_TENT, AD_DRIN, 2, 1)),
-        SIZ(0, 0, 0, 0), MR_PSYCHIC, 0, 0L, 0L, 0, 5, 0),
+        A(ATTK(AT_TENT, AD_DRIN, 2, 1), ATTK(AT_TENT, AD_DRIN, 2, 1),
+          ATTK(AT_TENT, AD_DRIN, 2, 1), NO_ATTK, NO_ATTK, NO_ATTK),
+        NO_SIZ, MR_PSYCHIC, 0, 0L, 0L, 0, 7, 0),
     MON2("shadowy", S_GHOST, LVL(2, 2, -3, 0, 3), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), MR_COLD | MR_STONE, MR_COLD | MR_STONE,
+        NO_ATTKS, NO_SIZ, MR_COLD | MR_STONE, MR_COLD | MR_STONE,
         M1_WALLWALK | M1_UNSOLID | M1_BREATHLESS | M1_FLY,
         M2_STALK, 0, MH_UNDEAD, 2, 0),
     MON2("vampiric", S_VAMPIRE, LVL(0, 2, -3, 0, -3), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-          ATTK(AT_BITE, AD_DRLI, 1, 6)),
-        SIZ(0, 0, 0, 0), 0, 0,
+        A(ATTK(AT_BITE, AD_DRLI, 1, 6), NO_ATTK, NO_ATTK,
+          NO_ATTK, NO_ATTK, NO_ATTK), NO_SIZ, 0, 0,
         M1_FLY | M1_POIS | M1_REGEN | M1_BREATHLESS,
         M2_STALK | M2_STRONG, 0, MH_UNDEAD, 4, 0),
     MON("armored", S_ANT, LVL(0, -2, -6, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0, 0L, M2_STRONG, 0, 2, 0),
+        NO_ATTKS, NO_SIZ, 0, 0, 0L, M2_STRONG, 0, 2, 0),
     MON("elite", S_HUMAN, LVL(3, 2, -3, 10, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0, 0L, M2_PRINCE | M2_FLANK, 0, 3, 0),
+        NO_ATTKS, NO_SIZ, 0, 0, 0L,
+        M2_PRINCE | M2_FLANK, 0, 3, 0),
     MON("oozing", S_PUDDING, LVL(0, 0, 0, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-            ATTK(AT_TUCH, AD_SLIM, 1, 2)),
-        SIZ(0, 0, 0, 0),
+        A(ATTK(AT_TUCH, AD_SLIM, 1, 2), NO_ATTK, NO_ATTK,
+          NO_ATTK, NO_ATTK, NO_ATTK), NO_SIZ,
         MR_COLD | MR_ELEC | MR_POISON | MR_ACID | MR_STONE,
         MR_COLD | MR_ELEC | MR_POISON,
         M1_BREATHLESS | M1_AMORPHOUS | M1_ACID,
         M2_NEUTER, 0, 4, 0),
     MON("teleporting", S_HUMANOID, LVL(0, 3, 0, 0, 0), (0),
-       A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0,
+        NO_ATTKS, NO_SIZ, 0, 0,
         M1_TPORT | M1_TPORT_CNTRL, M2_WANDER, 0, 1, 0),
     MON("overclocked", S_HUMANOID, LVL(0, 7, 0, 0, 0), (0),
-       A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0,
-        0, M2_WANDER, 0, 4, 0),
+        NO_ATTKS, NO_SIZ, 0, 0, 0, M2_WANDER, 0, 4, 0),
     /* sticky, spicy "demilichen". this mucilage is tangy! */
     MON("corrosive", S_FUNGUS, LVL(0, 0, 2, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-            ATTK(AT_NONE, AD_ACID, 2, 6), ATTK(AT_TUCH, AD_STCK, 0, 0)),
+        A(ATTK(AT_NONE, AD_ACID, 2, 6), ATTK(AT_TUCH, AD_STCK, 0, 0),
+          NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
         SIZ(50, 100, 0, 0),
         MR_ACID | MR_POISON | MR_STONE, MR_ACID,
         M1_NOEYES | M1_MINDLESS, M2_HOSTILE,
         0, 1, CLR_ORANGE),
-    MON("fiery drakken", S_DRAGON, LVL(2, -2, 2, 10, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-            ATTK(AT_BREA, AD_FIRE, 6, 6)),
+    MON("draconic", S_DRAGON, LVL(2, -2, 2, 10, 0), (0),
+        A(ATTK(AT_BREA, AD_FIRE, 6, 6), NO_ATTK, NO_ATTK,
+          NO_ATTK, NO_ATTK, NO_ATTK),
         SIZ(0, 0, MS_ROAR, 0), MR_FIRE, MR_FIRE,
         M1_FLY | M1_THICK_HIDE | M1_SEE_INVIS | M1_CARNIVORE,
         M2_HOSTILE | M2_STRONG | M2_GREEDY | M2_JEWELS | M2_MAGIC,
         0, 4, CLR_RED),
-    MON("icy drakken", S_DRAGON, LVL(2, -2, 2, 10, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-            ATTK(AT_BREA, AD_COLD, 4, 6)),
+    MON("icy draconic", S_DRAGON, LVL(2, -2, 2, 10, 0), (0),
+        A(ATTK(AT_BREA, AD_COLD, 6, 6), NO_ATTK, NO_ATTK,
+          NO_ATTK, NO_ATTK, NO_ATTK),
         SIZ(0, 0, MS_ROAR, 0), MR_COLD, MR_COLD,
         M1_FLY | M1_THICK_HIDE | M1_SEE_INVIS | M1_CARNIVORE,
         M2_HOSTILE | M2_STRONG | M2_GREEDY | M2_JEWELS | M2_MAGIC,
         0, 4, CLR_WHITE),
     MON("explosive", S_EYE, LVL(1, 0, 0, 0, 0), (G_NOCORPSE),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-            ATTK(AT_BOOM, AD_PHYS, 4, 10)),
-        SIZ(0, 0, 0, 0), 0, 0, 0L, 0L, 0, 1, 0),
+        A(ATTK(AT_BOOM, AD_PHYS, 4, 10), NO_ATTK, NO_ATTK,
+          NO_ATTK, NO_ATTK, NO_ATTK),
+        NO_SIZ, 0, 0, 0L, 0L, 0, 1, 0),
     MON("spiny", S_DEMON, LVL(0, 0, 5, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK,
-            ATTK(AT_NONE, AD_QUIL, 3, 5), ATTK(AT_VOLY, AD_QUIL, 8, 2)),
-        SIZ(0, 0, 0, 0), MR_SLEEP | MR_POISON, MR_POISON,
+        A(ATTK(AT_NONE, AD_QUIL, 3, 5), ATTK(AT_VOLY, AD_QUIL, 8, 2),
+          NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
+        NO_SIZ, MR_SLEEP | MR_POISON, MR_POISON,
         M1_POIS | M1_THICK_HIDE,
         M2_STALK | M2_HOSTILE,
         M3_INFRAVISION | M3_INFRAVISIBLE, 2, 0),
@@ -5203,8 +5195,7 @@ NEARDATA struct permonst montemplates[] = {
      * array terminator
      */
     MON("", 0, LVL(0, 0, 0, 0, 0), (0),
-        A(NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK),
-        SIZ(0, 0, 0, 0), 0, 0, 0L, 0L, 0, 0, 0)
+        NO_ATTKS, NO_SIZ, 0, 0, 0L, 0L, 0, 0, 0)
     /* need array term? */
 };
 #endif /* !SPLITMON_1 */

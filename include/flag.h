@@ -63,6 +63,7 @@ struct flag {
     boolean time;            /* display elapsed 'time' */
     boolean tombstone;       /* print tombstone */
     boolean verbose;         /* max battle info */
+    boolean simplelevels;    /* skip levelup screen */
     int end_top, end_around; /* describe desired score list */
     unsigned moonphase;
     unsigned long suppress_alert;
@@ -193,6 +194,7 @@ struct instance_flags {
      * behaviour of various NetHack functions and probably warrant
      * a structure of their own elsewhere some day.
      */
+    boolean lua_testing;   /* doing lua tests */
     boolean debug_fuzzer;  /* fuzz testing */
     boolean in_lua;        /* executing a lua script */
     boolean defer_plname;  /* X11 hack: askname() might not set g.plname */
@@ -223,6 +225,9 @@ struct instance_flags {
     boolean window_inited; /* true if init_nhwindows() completed */
     boolean vision_inited; /* true if vision is ready */
     boolean sanity_check;  /* run sanity checks */
+    boolean debug_overwrite_stairs; /* debug: allow overwriting stairs */
+    boolean debug_mongen;  /* debug: prevent monster generation */
+    boolean debug_hunger;  /* debug: prevent hunger */
     boolean mon_polycontrol; /* debug: control monster polymorphs */
     boolean in_dumplog;    /* doing the dumplog right now? */
     boolean in_parse;      /* is a command being parsed? */

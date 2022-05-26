@@ -982,6 +982,7 @@ makelevel(void)
 {
     register struct mkroom *croom;
     branch *branchp;
+    stairway *prevstairs;
     int room_threshold;
     register s_level *slev = Is_special(&u.uz);
     int i;
@@ -1047,7 +1048,7 @@ makelevel(void)
                 g.level.flags.celltyp = CORR;
             }
             mkchasms();
-        } else if (!rn2(3)) {
+        } else if (depth(&u.uz) > 3 && !rn2(4)) {
             mklakes();
         }
 
@@ -1118,8 +1119,16 @@ makelevel(void)
             do_mkroom(LEMUREPIT);
 
  skip0:
+        prevstairs = g.stairs; /* used to test for place_branch() success */
         /* Place multi-dungeon branch. */
         place_branch(branchp, 0, 0);
+
+        /* for main dungeon level 1, the stairs up where the hero starts
+           are branch stairs; treat them as if hero had just come down
+           them by marking them as having been traversed; most recently
+           created stairway is held in 'g.stairs' */
+        if (u.uz.dnum == 0 && u.uz.dlevel == 1 && g.stairs != prevstairs)
+            g.stairs->u_traversed = TRUE;
 
         /* for each room: put things inside */
         for (croom = g.rooms; croom->hx > 0; croom++) {
@@ -1239,20 +1248,11 @@ mineralize(int kelp_pool, int kelp_moat, int goldprob, int gemprob,
 }
 
 void
-mklev(void)
+level_finalize_topology(void)
 {
     struct mkroom *croom;
     int ridx;
 
-    reseed_random(rn2);
-    reseed_random(rn2_on_display_rng);
-
-    init_mapseen(&u.uz);
-    if (getbones())
-        return;
-
-    g.in_mklev = TRUE;
-    makelevel();
     bound_digging();
     mineralize(-1, -1, -1, -1, FALSE);
     g.in_mklev = FALSE;
@@ -1274,6 +1274,22 @@ mklev(void)
        entered; g.rooms[].orig_rtype always retains original rtype value */
     for (ridx = 0; ridx < SIZE(g.rooms); ridx++)
         g.rooms[ridx].orig_rtype = g.rooms[ridx].rtype;
+}
+
+void
+mklev(void)
+{
+    reseed_random(rn2);
+    reseed_random(rn2_on_display_rng);
+
+    init_mapseen(&u.uz);
+    if (getbones())
+        return;
+
+    g.in_mklev = TRUE;
+    makelevel();
+
+    level_finalize_topology();
 
     reseed_random(rn2);
     reseed_random(rn2_on_display_rng);
@@ -1417,7 +1433,7 @@ place_branch(branch *br,       /* branch to place */
         boolean goes_up = on_level(&br->end1, &u.uz) ? br->end1_up
                                                      : !br->end1_up;
 
-        stairway_add(x,y, goes_up, FALSE, dest);
+        stairway_add(x, y, goes_up, FALSE, dest);
         levl[x][y].ladder = goes_up ? LA_UP : LA_DOWN;
         levl[x][y].typ = STAIRS;
     }

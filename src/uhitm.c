@@ -1,4 +1,4 @@
-/* NetHack 3.7	uhitm.c	$NHDT-Date: 1625446013 2021/07/05 00:46:53 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.311 $ */
+/* NetHack 3.7	uhitm.c	$NHDT-Date: 1625838649 2021/07/09 13:50:49 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.312 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -301,7 +301,7 @@ find_roll_to_hit(struct monst *mtmp,
     /* In SpliceHack, luck and character level are not a factor */
     /* tmp = 1 + Luck + abon() + find_mac(mtmp) + u.uhitinc
           + maybe_polyd(g.youmonst.data->mlevel, u.ulevel); */
-    tmp = 1 + abon() + find_mac(mtmp) + u.uhitinc + (int) (maybe_polyd(g.youmonst.data->mlevel, u.ulevel) * role_bab());
+    tmp = 1 + abon() + find_mac(mtmp) + u.uhitinc + (int) (maybe_polyd(g.youmonst.data->mlevel, u.ubab));
 
     /* some actions should occur only once during multiple attacks */
     if (!(*attk_count)++) {
@@ -4900,6 +4900,8 @@ mhitm_ad_dgst(struct monst *magr, struct attack *mattk UNUSED,
             mhm->done = TRUE;
             return;
         }
+        if (munengulf(mdef))
+            return;
         if (flags.verbose && !Deaf)
             verbalize("Burrrrp!");
         mhm->damage = mdef->mhp;
@@ -5419,8 +5421,10 @@ gulpum(struct monst *mdef, struct attack *mattk)
         return MM_MISS;
 
     if (u.uhunger < 1500 && !u.uswallow) {
-        for (otmp = mdef->minvent; otmp; otmp = otmp->nobj)
-            (void) snuff_lit(otmp);
+        if (!flaming(g.youmonst.data)) {
+            for (otmp = mdef->minvent; otmp; otmp = otmp->nobj)
+                (void) snuff_lit(otmp);
+        }
 
         /* force vampire in bat, cloud, or wolf form to revert back to
            vampire form now instead of dealing with that when it dies */
@@ -5646,6 +5650,7 @@ hmonas(struct monst *mon)
     int i, tmp, armorpenalty, sum[NATTK], nsum = MM_MISS,
         dhit = 0, attknum = 0;
     int dieroll, multi_claw = 0;
+    boolean monster_survived;
 
     /* not used here but umpteen mhitm_ad_xxxx() need this */
     g.vis = (canseemon(mon) || distu(mon->mx, mon->my) <= 2);
@@ -5725,17 +5730,18 @@ hmonas(struct monst *mon)
             dieroll = rnd(20);
             dhit = (tmp > dieroll || u.uswallow);
             /* caller must set g.bhitpos */
-            if (!known_hitum(mon, weapon, &dhit, tmp,
-                             armorpenalty, mattk, dieroll)) {
+            monster_survived = known_hitum(mon, weapon, &dhit, tmp,
+                                           armorpenalty, mattk, dieroll);
+            /* originalweapon points to an equipment slot which might
+               now be empty if the weapon was destroyed during the hit;
+               passive(,weapon,...) won't call passive_obj() in that case */
+            weapon = *originalweapon; /* might receive passive erosion */
+            if (!monster_survived) {
                 /* enemy dead, before any special abilities used */
                 sum[i] = MM_DEF_DIED;
                 break;
             } else
                 sum[i] = dhit ? MM_HIT : MM_MISS;
-            /* originalweapon points to an equipment slot which might
-               now be empty if the weapon was destroyed during the hit;
-               passive(,weapon,...) won't call passive_obj() in that case */
-            weapon = *originalweapon; /* might receive passive erosion */
             /* might be a worm that gets cut in half; if so, early return */
             if (m_at(u.ux + u.dx, u.uy + u.dy) != mon) {
                 i = NATTK; /* skip additional attacks */
@@ -6210,6 +6216,15 @@ passive(struct monst *mon,
             } else if (aatyp == AT_BITE || aatyp == AT_BUTT
                        || (aatyp >= AT_STNG && aatyp < AT_WEAP)) {
                 break; /* no object involved */
+            } else {
+                /*
+                 * TODO:  #H2668 - if hitting with a ring that has a
+                 * positive enchantment, it ought to be subject to
+                 * having that enchantment reduced.  But we don't have
+                 * sufficient information here to know which hand/ring
+                 * has delived a weaponless blow.
+                 */
+                ;
             }
             passive_obj(mon, weapon, &(ptr->mattk[i]));
         }

@@ -10,6 +10,7 @@
 
 static int enermod(int);
 static void levelup_menu(void);
+static void roleswitch_menu(void);
 
 long
 newuexp(lev)
@@ -320,6 +321,7 @@ losexp(const char *drainer) /* cause of death, if drain should be fatal */
             rehumanize();
     }
 
+    u.ubab = role_bab();
     g.context.botl = TRUE;
 }
 
@@ -344,15 +346,15 @@ pluslvl(boolean incr) /* true iff via incremental experience growth */
     if (!incr)
         You_feel("more experienced.");
 
+    /* Display the level up menu */
+    if (!flags.simplelevels)
+        levelup_menu();
+
     /* Increase class and race-specific skills. */
     for (skill = P_FIRST_ROLE; skill <= P_LAST_RACE; skill++) {
         if (!P_RESTRICTED(skill))
-            use_skill(skill, 5 * P_SKILL(skill));
+            use_skill(skill, rn1(3, 3) * P_SKILL(skill));
     }
-
-    /* Role selection */
-    if (u.ulevel < MAXULEV && yn("Do you want to switch roles?") == 'y')
-        levelup_menu();
 
     if (!u.uroleplay.marathon && !u.uroleplay.heaven_or_hell) {
         /* increase hit points (when polymorphed, do monster form first
@@ -397,6 +399,7 @@ pluslvl(boolean incr) /* true iff via incremental experience growth */
         if (newrank > oldrank)
             record_achievement(achieve_rank(newrank));
     }
+    u.ubab = role_bab();
     g.context.botl = TRUE;
 }
 
@@ -433,16 +436,9 @@ static void
 levelup_menu(void) {
     winid win;
     anything any;
-    int i, n;
-    boolean role_ok;
+    int n, skill;
     menu_item *selected;
-    char rolenamebuf[50];
-    char qbuf[BUFSZ];
-    short old_ldrnum, old_neminum, old_guardnum, old_questarti;
-    const char *old_ngod;
-    const char *old_lgod;
-    const char *old_cgod;
-    const char *old_filecode;
+    char buf[BUFSZ];
 
 
     /* Convicts CANNOT switch roles. The player can certanly switch into convict if they want, although I
@@ -450,8 +446,111 @@ levelup_menu(void) {
     if (Role_if(PM_CONVICT))
         return;
 
+    while(1) {
+        win = create_nhwindow(NHW_MENU);
+        start_menu(win, MENU_BEHAVE_STANDARD);
+        any = cg.zeroany;
+        Sprintf(buf, "You are leveling up as a %s.",
+                roles[g.urole.malenum - PM_ARCHEOLOGIST].name.m);
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, buf,
+                    MENU_ITEMFLAGS_NONE);
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "You may choose to invest your experience in multiple roles.",
+                    MENU_ITEMFLAGS_NONE);
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "Doing so will result in a permanent experience penalty.",
+                    MENU_ITEMFLAGS_NONE);
+        buf[0] = '\0';
+        /* Display skills one stands to gain. */
+        Sprintf(buf, "If you level up as a %s, you will gain experience in the following skills:",
+                roles[g.urole.malenum - PM_ARCHEOLOGIST].name.m);
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, buf,
+                    MENU_ITEMFLAGS_NONE);
+        for (skill = P_FIRST_ROLE; skill <= P_LAST_ROLE; skill++) {
+            if (!P_RESTRICTED(skill)) {
+                buf[0] = '\0';
+                Sprintf(buf, "  * %s", skill_name(skill));
+                add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, buf,
+                    MENU_ITEMFLAGS_NONE);
+            }
+        }
+        /* Display HP and PW gain. */
+        buf[0] = '\0';
+        Sprintf(buf, "You will gain (1d%d) + (1d%d) hit points, modified by constitution.",
+            u.ulevel < g.urole.xlev ? g.urole.hpadv.lornd : g.urole.hpadv.hirnd,
+            u.ulevel < g.urole.xlev ? g.urace.hpadv.lornd : g.urole.hpadv.hirnd);
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, buf,
+                    MENU_ITEMFLAGS_NONE);
+        buf[0] = '\0';
+        Sprintf(buf, "You will gain (1d%d) + (1d%d) power, modified by wisdom.",
+            u.ulevel < g.urole.xlev ? g.urole.enadv.lornd : g.urole.enadv.hirnd,
+            u.ulevel < g.urole.xlev ? g.urace.enadv.lornd : g.urole.enadv.hirnd);
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, buf,
+                    MENU_ITEMFLAGS_NONE);
+        /* Display special warnings. */
+        if (g.urole.malenum == PM_MONK)
+            add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "You will be constricted by body armor.",
+                    MENU_ITEMFLAGS_NONE);
+        if (g.urole.malenum == PM_DRAGON_RIDER)
+            add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "You will be unable to wear dragon-based armor.",
+                    MENU_ITEMFLAGS_NONE);
+        if (g.urole.malenum == PM_CONVICT)
+            add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "You will be unable to switch roles again.",
+                    MENU_ITEMFLAGS_NONE);
+        if (g.urole.malenum == PM_KNIGHT || g.urole.malenum == PM_SAMURAI)
+            add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "You will be bound by a code of honor.",
+                    MENU_ITEMFLAGS_NONE);
+        /* Display options */
+        any.a_int = 1;
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_INVERSE, "Finish Leveling Up",
+                    MENU_ITEMFLAGS_NONE);
+        any.a_int = 2;
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "View character sheet",
+                    MENU_ITEMFLAGS_NONE);
+        any.a_int = 3;
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "Enhance skills",
+                    MENU_ITEMFLAGS_NONE);
+        any.a_int = 4;
+        add_menu(win, &nul_glyphinfo, &any, 0, 0, ATR_NONE, "Change roles",
+                    MENU_ITEMFLAGS_NONE);
+        end_menu(win, "You have gained a level!");
+        n = select_menu(win, PICK_ONE, &selected);
+        if (n > 0) n = selected[0].item.a_int;
+        switch(n) {
+        case 1:
+            destroy_nhwindow(win);
+            return;
+            break;
+        case 2:
+            enlightenment(BASICENLIGHTENMENT, ENL_GAMEINPROGRESS);
+            break;
+        case 3:
+            enhance_weapon_skill();
+            break;
+        case 4:
+            roleswitch_menu();
+            break;
+        }
+        destroy_nhwindow(win);
+    }
+}
+
+static void
+roleswitch_menu(void) {
+    winid win;
+    anything any;
+    int i, n;
+    boolean role_ok;
+    menu_item *selected;
+    char rolenamebuf[50];
+    short old_ldrnum, old_neminum, old_guardnum, old_questarti;
+    const char *old_ngod;
+    const char *old_lgod;
+    const char *old_cgod;
+    const char *old_filecode;
+
     win = create_nhwindow(NHW_MENU);
     start_menu(win, MENU_BEHAVE_STANDARD);
+
+
     any = cg.zeroany; /* zero out all bits */
     for (i = 0; i < NUM_ROLES; i++) {
         role_ok = ((ok_role(i, flags.initrace, flags.female, u.ualign.type)
@@ -471,43 +570,35 @@ levelup_menu(void) {
         add_menu(win, &nul_glyphinfo, &any, 0, 0, i == flags.initrole ? ATR_INVERSE : ATR_NONE, rolenamebuf,
                  (!role_ok) ? MENU_ITEMFLAGS_SELECTED : MENU_ITEMFLAGS_NONE);
     }
-    end_menu(win, "Which role do you want to level up?");
+    end_menu(win, "Which role do you want to switch into?");
     n = select_menu(win, PICK_ONE, &selected);
     destroy_nhwindow(win);
     if (n > 0) n = selected[0].item.a_int - 1;
-
-    qbuf[0] = '\0';
-    Sprintf(qbuf, "Are you sure you want to switch your active role from %s to %s?", roles[flags.initrole].name.m, roles[n].name.m);
-    if (n == flags.initrole || n >= NUM_ROLES || n < 0 ||
-        yn(qbuf) == 'n')
-        return;
-    else {
-        /* Add index for save and reload */
-        if (!flags.original_role) flags.original_role = flags.initrole;
-        /* Get old quest and god info. */
-        old_ldrnum = g.urole.ldrnum;
-        old_neminum = g.urole.neminum;
-        old_guardnum = g.urole.guardnum;
-        old_questarti = g.urole.questarti;
-        old_ngod = g.urole.ngod;
-        old_lgod = g.urole.lgod;
-        old_cgod = g.urole.cgod;
-        old_filecode = g.urole.filecode;
-        /* Switch roles. */
-        flags.initrole = n;
-        g.urole = roles[flags.initrole];
-        switch_role_skills(get_role_skills(flags.initrole));
-        You("are now %s.", an(roles[flags.initrole].name.m));
-        /* Transfer over quest and god info. */
-        g.urole.ldrnum = old_ldrnum;
-        g.urole.neminum = old_neminum;
-        g.urole.guardnum = old_guardnum;
-        g.urole.questarti = old_questarti;
-        g.urole.ngod = old_ngod;
-        g.urole.lgod = old_lgod;
-        g.urole.cgod = old_cgod;
-        g.urole.filecode = old_filecode;
-    }
+    else return;
+    /* Add index for save and reload */
+    if (!flags.original_role) flags.original_role = flags.initrole;
+    /* Get old quest and god info. */
+    old_ldrnum = g.urole.ldrnum;
+    old_neminum = g.urole.neminum;
+    old_guardnum = g.urole.guardnum;
+    old_questarti = g.urole.questarti;
+    old_ngod = g.urole.ngod;
+    old_lgod = g.urole.lgod;
+    old_cgod = g.urole.cgod;
+    old_filecode = g.urole.filecode;
+    /* Switch roles. */
+    flags.initrole = n;
+    g.urole = roles[flags.initrole];
+    switch_role_skills(get_role_skills(flags.initrole));
+    /* Transfer over quest and god info. */
+    g.urole.ldrnum = old_ldrnum;
+    g.urole.neminum = old_neminum;
+    g.urole.guardnum = old_guardnum;
+    g.urole.questarti = old_questarti;
+    g.urole.ngod = old_ngod;
+    g.urole.lgod = old_lgod;
+    g.urole.cgod = old_cgod;
+    g.urole.filecode = old_filecode;
 }
 
 /*exper.c*/

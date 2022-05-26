@@ -1,4 +1,4 @@
-/* NetHack 3.7	mon.c	$NHDT-Date: 1620923921 2021/05/13 16:38:41 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.375 $ */
+/* NetHack 3.7	mon.c	$NHDT-Date: 1627413528 2021/07/27 19:18:48 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.382 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Derek S. Ray, 2015. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -7,26 +7,26 @@
 #include "mfndpos.h"
 #include <ctype.h>
 
-static void sanity_check_single_mon(struct monst *, boolean,
-                                    const char *);
-static boolean restrap(struct monst *);
+static void sanity_check_single_mon(struct monst *, boolean, const char *);
+static struct obj *make_corpse(struct monst *, unsigned);
+static int minliquid_core(struct monst *);
+static boolean monlineu(struct monst *, int, int);
 static long mm_2way_aggression(struct monst *, struct monst *);
 static long mm_aggression(struct monst *, struct monst *);
 static long mm_displacement(struct monst *, struct monst *);
-static int pick_animal(void);
-static void kill_eggs(struct obj *);
-static int pickvampshape(struct monst *);
-static boolean isspecmon(struct monst *);
-static boolean validspecmon(struct monst *, int);
-static struct permonst *accept_newcham_form(struct monst *, int);
-static struct obj *make_corpse(struct monst *, unsigned);
-static int minliquid_core(struct monst *);
 static void m_detach(struct monst *, struct permonst *);
 static void set_mon_min_mhpmax(struct monst *, int);
 static void lifesaved_monster(struct monst *);
 static void migrate_mon(struct monst *, xchar, xchar);
 static boolean ok_to_obliterate(struct monst *);
 static void deal_with_overcrowding(struct monst *);
+static boolean restrap(struct monst *);
+static int pick_animal(void);
+static int pickvampshape(struct monst *);
+static boolean isspecmon(struct monst *);
+static boolean validspecmon(struct monst *, int);
+static struct permonst *accept_newcham_form(struct monst *, int);
+static void kill_eggs(struct obj *);
 
 #define LEVEL_SPECIFIC_NOCORPSE(mdat) \
     (Is_rogue_level(&u.uz)            \
@@ -65,7 +65,8 @@ sanity_check_single_mon(
     } else {
         int mndx = monsndx(mptr);
 
-        if (mtmp->mnum != mndx) {
+        /* TODO: Implement actual sanity checks for templated mons. */
+        if (mtmp->mnum != mndx && !(has_etemplate(mtmp) && is_were(mtmp->data))) {
             impossible("monster mnum=%d, monsndx=%d (%s)",
                        mtmp->mnum, mndx, msg);
             mtmp->mnum = mndx;
@@ -566,7 +567,6 @@ make_corpse(struct monst *mtmp, unsigned int corpseflags)
     case PM_VAMPIRE_LEADER:
     case PM_VAMPIRE_MAGE:
     case PM_NOSFERATU:
-    case PM_BAOBHAN_SITH:
         /* include mtmp in the mkcorpstat() call */
         num = undead_to_corpse(mndx);
         corpstatflags |= CORPSTAT_INIT;
@@ -860,7 +860,7 @@ minliquid_core(struct monst* mtmp)
         if (mtmp->mhpmax > dam)
             mtmp->mhpmax -= dam;
         if (DEADMONSTER(mtmp)) {
-            mondead(mtmp);
+            mondied(mtmp);
             if (DEADMONSTER(mtmp))
                 return 1;
         }
@@ -896,7 +896,7 @@ minliquid_core(struct monst* mtmp)
                    case is not expected to happen (and we haven't made a
                    player-against-monster variation of the message above) */
                 if (g.context.mon_moving)
-                    mondead(mtmp);
+                    mondead(mtmp); /* no corpse */
                 else
                     xkilled(mtmp, XKILL_NOMSG);
             } else {
@@ -904,7 +904,7 @@ minliquid_core(struct monst* mtmp)
                 if (DEADMONSTER(mtmp)) {
                     if (cansee(mtmp->mx, mtmp->my))
                         pline("%s surrenders to the fire.", Monnam(mtmp));
-                    mondead(mtmp);
+                    mondead(mtmp); /* no corpse */
                 } else if (cansee(mtmp->mx, mtmp->my))
                     pline("%s burns slightly.", Monnam(mtmp));
             }
@@ -943,7 +943,7 @@ minliquid_core(struct monst* mtmp)
                       Monnam(mtmp), hliquid("water"));
             }
             if (g.context.mon_moving)
-                mondead(mtmp);
+                mondied(mtmp); /* ok to leave corpse despite water */
             else
                 xkilled(mtmp, XKILL_NOMSG);
             if (!DEADMONSTER(mtmp)) {
@@ -1855,6 +1855,13 @@ can_carry(struct monst* mtmp, struct obj* otmp)
     return iquan;
 }
 
+/* is <nx,ny> in direct line with where 'mon' thinks hero is? */
+static boolean
+monlineu(struct monst *mon, int nx, int ny)
+{
+    return online2(nx, ny, mon->mux, mon->muy);
+}
+
 /* return flags based on monster data, for mfndpos() */
 long
 mon_allowflags(struct monst* mtmp)
@@ -2106,7 +2113,7 @@ mfndpos(
                         continue;
                     info[cnt] |= ALLOW_ROCK;
                 }
-                if (monseeu && onlineu(nx, ny)) {
+                if (monseeu && monlineu(mon, nx, ny)) {
                     if (flag & NOTONL)
                         continue;
                     info[cnt] |= NOTONL;
@@ -3612,8 +3619,8 @@ ok_to_obliterate(struct monst* mtmp)
 void
 elemental_clog(struct monst* mon)
 {
-    int m_lev = 0;
     static long msgmv = 0L;
+    int m_lev = 0;
     struct monst *mtmp, *m1, *m2, *m3, *m4, *m5, *zm;
 
     if (In_endgame(&u.uz)) {
@@ -4620,7 +4627,6 @@ select_newcham_form(struct monst* mon)
     case PM_VAMPIRE_MAGE:
     case PM_VAMPIRE_LEADER:
     case PM_VAMPIRE:
-    case PM_BAOBHAN_SITH:
     case PM_ALUCARD:
         mndx = pickvampshape(mon);
         break;
@@ -4799,7 +4805,8 @@ newcham(
     }
     /* we need this one whether msg is true or not */
     Strcpy(l_oldname, x_monnam(mtmp, ARTICLE_THE, (char *) 0,
-                               has_mgivenname(mtmp) ? SUPPRESS_SADDLE : 0, FALSE));
+                               has_mgivenname(mtmp) ? SUPPRESS_SADDLE : 0,
+                               FALSE));
 
     /* mdat = 0 -> caller wants a random monster shape */
     if (mdat == 0) {
@@ -4832,7 +4839,8 @@ newcham(
      * polymorphed, so dropping rank for mplayers seems reasonable.
      */
     if (In_endgame(&u.uz) && is_mplayer(olddata)
-        && has_mgivenname(mtmp) && (p = strstr(MGIVENNAME(mtmp), " the ")) != 0)
+        && has_mgivenname(mtmp)
+        && (p = strstr(MGIVENNAME(mtmp), " the ")) != 0)
         *p = '\0';
 
     if (mtmp->wormno) { /* throw tail away */

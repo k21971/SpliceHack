@@ -331,8 +331,6 @@ done1(int sig_unused UNUSED)
 int
 done2(void)
 {
-    if (iflags.debug_fuzzer)
-        return 0;
     if (!paranoid_query(ParanoidQuit, "Really quit?")) {
 #ifndef NO_SIGNAL
         (void) signal(SIGINT, (SIG_RET_TYPE) done1);
@@ -545,12 +543,7 @@ done_in_by(struct monst *mtmp, int how)
         u.ugrave_arise = PM_BODAK;
     else if (mptr->mlet == S_WRAITH)
         u.ugrave_arise = PM_WRAITH;
-    else if (mptr == &mons[PM_BAOBHAN_SITH]) {
-        if (flags.female == FEMALE)
-            u.ugrave_arise = PM_BAOBHAN_SITH;
-        else
-            u.ugrave_arise = NON_PM;
-    } else if (mptr->mlet == S_WRAITH)
+    else if (mptr->mlet == S_WRAITH)
         u.ugrave_arise = PM_WRAITH;
     else if (mptr->mlet == S_MUMMY && g.urace.mummynum != NON_PM)
         u.ugrave_arise = g.urace.mummynum;

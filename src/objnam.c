@@ -1,4 +1,4 @@
-/* NetHack 3.7	objnam.c	$NHDT-Date: 1620348711 2021/05/07 00:51:51 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.315 $ */
+/* NetHack 3.7	objnam.c	$NHDT-Date: 1625884843 2021/07/10 02:40:43 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.324 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2011. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -825,6 +825,10 @@ xname_flags(
             if (*lbl)
                 Sprintf(eos(buf), " labeled \"%s\"", lbl);
             break;
+        case HAWAIIAN_SHIRT:
+            Sprintf(eos(buf), " with %s motif",
+                    an(hawaiian_motif(obj, tmpbuf)));
+            break;
         default:
             break;
         }
@@ -970,7 +974,7 @@ add_erosion_words(struct obj* obj, char* prefix)
             Strcat(prefix, "thoroughly ");
             break;
         }
-        Strcat(prefix, is_rustprone(obj) ? "rusty " : "burnt ");
+        Strcat(prefix, is_rustprone(obj) ? "rusty " : is_brittlable(obj) ? "brittle " : "burnt ");
     }
     if (obj->oeroded2 && !iscrys) {
         switch (obj->oeroded2) {
@@ -994,6 +998,8 @@ add_erosion_words(struct obj* obj, char* prefix)
             Strcat(prefix, "corrodeproof ");
         else if (is_flammable(obj))
             Strcat(prefix, "fireproof ");
+        else if (is_brittlable(obj))
+            Strcat(prefix, "unbreakable ");
     }
 }
 
@@ -1009,7 +1015,7 @@ erosion_matters(struct obj* obj)
            non-iron tool, in which case rust also implicitly goes away,
            so there's no particular reason to try to handle the first
            instance differently [this comment belongs in poly_obj()...] */
-        return is_weptool(obj) ? TRUE : FALSE;
+        return (is_weptool(obj) || obj->otyp == SKELETON_KEY) ? TRUE : FALSE;
     case WEAPON_CLASS:
     case ARMOR_CLASS:
     case BALL_CLASS:
@@ -1188,6 +1194,9 @@ doname_base(struct obj* obj, unsigned int doname_flags)
             if (obj == uarmg && Glib) /* just appended "(something)",
                                        * change to "(something; slippery)" */
                 Strcpy(rindex(bp, ')'), "; slippery)");
+            else if (!Blind && obj->lamplit && artifact_light(obj))
+                Sprintf(rindex(bp, ')'), ", %s lit)",
+                        arti_light_description(obj));
         }
         /*FALLTHRU*/
     case WEAPON_CLASS:
@@ -1238,6 +1247,9 @@ doname_base(struct obj* obj, unsigned int doname_flags)
                         noit_mon_nam(mlsh));
             }
             break;
+        }
+        if (obj->otyp == SKELETON_KEY) {
+            add_erosion_words(obj, prefix);
         }
         if (obj->otyp == CANDELABRUM_OF_INVOCATION) {
             Sprintf(eos(bp), " (%d of 7 candle%s%s)",
@@ -1353,13 +1365,17 @@ doname_base(struct obj* obj, unsigned int doname_flags)
                     /* avoid "tethered wielded in right hand" for twoweapon */
                     (twoweap_primary && !tethered) ? "wielded" : "weapon",
                     twoweap_primary ? "right " : "", hand_s);
-
-            if (g.warn_obj_cnt && obj == uwep
-                && (EWarn_of_mon & W_WEP) != 0L) {
-                if (!Blind) /* we know bp[] ends with ')'; overwrite that */
+            if (!Blind) {
+                if (g.warn_obj_cnt && obj == uwep
+                    && (EWarn_of_mon & W_WEP) != 0L)
+                    /* we know bp[] ends with ')'; overwrite that */
                     Sprintf(eos(bp) - 1, ", %s %s)",
                             glow_verb(g.warn_obj_cnt, TRUE),
                             glow_color(obj->oartifact));
+                else if (obj->lamplit && artifact_light(obj))
+                    /* as above, overwrite known closing paren */
+                    Sprintf(eos(bp) - 1, ", %s lit)",
+                            arti_light_description(obj));
             }
         }
     }
@@ -1850,10 +1866,16 @@ just_an(char *outbuf, const char *str)
     } else if (!strcmpi(str, "cheese")) {
         Strcpy(outbuf, "some ");
     } else {
-        if ((index(vowels, c0) && strncmpi(str, "one-", 4)
-             && strncmpi(str, "eucalyptus", 10) && strncmpi(str, "unicorn", 7)
-             && strncmpi(str, "uranium", 7) && strncmpi(str, "useful", 6))
-            || (index("x", c0) && !index(vowels, lowc(str[1]))))
+        /* normal case is "an <vowel>" or "a <consonant>" */
+        if ((index(vowels, c0) /* some exceptions warranting "a <vowel>" */
+             /* 'wun' initial sound */
+             && (strncmpi(str, "one", 3) || (str[3] && !index("-_ ", str[3])))
+             /* long 'u' initial sound */
+             && strncmpi(str, "eu", 2) /* "eucalyptus leaf" */
+             && strncmpi(str, "uke", 3) && strncmpi(str, "ukulele", 7)
+             && strncmpi(str, "unicorn", 7) && strncmpi(str, "uranium", 7)
+             && strncmpi(str, "useful", 6)) /* "useful tool" */
+            || (c0 == 'x' && !index(vowels, lowc(str[1]))))
             Strcpy(outbuf, "an ");
         else
             Strcpy(outbuf, "a ");
@@ -3151,7 +3173,7 @@ rnd_otyp_by_namedesc(
      * probabilities are not very useful because they don't take
      * the class generation probability into account.  [If 10%
      * of spellbooks were blank and 1% of scrolls were blank,
-     * "blank" would have 10/11 chance to yield a blook even though
+     * "blank" would have 10/11 chance to yield a book even though
      * scrolls are supposed to be much more common than books.]
      */
     for (i = lo; i <= hi; ++i) {
@@ -3246,7 +3268,8 @@ wizterrainwish(struct _readobjnam_data *d)
         lev->typ = GRASS;
         pline("Some grass.");
         madeterrain = TRUE;
-    } else if (!BSTRCMPI(bp, p - 7, "furnace")) {
+    } else if ((!BSTRCMPI(bp, p - 7, "furnace"))
+            || (!BSTRCMPI(bp, p - 5, "forge"))) {
         lev->typ = FURNACE;
         g.level.flags.nfurnaces++;
         lev->looted = 0; /* overlays 'flags' */
@@ -3428,8 +3451,16 @@ wizterrainwish(struct _readobjnam_data *d)
         }
     } else if (!BSTRCMPI(bp, p - 4, "wall")
                          && (bp == p - 4 || p[-4] == ' ')) {
-        pline("Wishing for walls is not implemented.");
-        badterrain = TRUE;
+        schar wall = HWALL;
+
+        if ((isok(u.ux, u.uy-1) && IS_WALL(levl[u.ux][u.uy-1].typ))
+            || (isok(u.ux, u.uy+1) && IS_WALL(levl[u.ux][u.uy+1].typ)))
+            wall = VWALL;
+        madeterrain = TRUE;
+        lev->typ = wall;
+        fix_wall_spines(max(0,u.ux-1), max(0,u.uy-1),
+                        min(COLNO,u.ux+1), min(ROWNO,u.uy+1));
+        pline("A wall.");
     } else if (!BSTRCMPI(bp, p - 15, "secret corridor")) {
         if (lev->typ == CORR) {
             lev->typ = SCORR;
@@ -3686,7 +3717,8 @@ readobjnam_preparse(struct _readobjnam_data *d)
                    || !strncmpi(d->bp, "fireproof ", l = 10)
                    || !strncmpi(d->bp, "rotproof ", l = 9)
                    || !strncmpi(d->bp, "unbreakable ", l = 12)
-                   || !strncmpi(d->bp, "shatterproof ", l = 13)) {
+                   || !strncmpi(d->bp, "shatterproof ", l = 13)
+                   || !strncmpi(d->bp, "unbreakable ", l = 12)) {
             d->erodeproof = 1;
         } else if (!strncmpi(d->bp, "lit ", l = 4)
                    || !strncmpi(d->bp, "burning ", l = 8)) {
@@ -3755,7 +3787,8 @@ readobjnam_preparse(struct _readobjnam_data *d)
         } else if (!strncmpi(d->bp, "rusty ", l = 6)
                    || !strncmpi(d->bp, "rusted ", l = 7)
                    || !strncmpi(d->bp, "burnt ", l = 6)
-                   || !strncmpi(d->bp, "burned ", l = 7)) {
+                   || !strncmpi(d->bp, "burned ", l = 7)
+                   || !strncmpi(d->bp, "brittle ", l = 8)) {
             d->eroded = 1 + d->very;
             d->very = 0;
         } else if (!strncmpi(d->bp, "corroded ", l = 9)
@@ -4165,6 +4198,12 @@ readobjnam_postparse1(struct _readobjnam_data *d)
         d->typ = SPE_BLANK_PAPER;
         return 2; /*goto typfnd;*/
     }
+    /* without this, player would need to specify "paperback spellbook" to
+       get a novel using its description */
+    if (!BSTRCMPI(d->bp, d->p - 14, "paperback book")) {
+        d->typ = SPE_NOVEL;
+        return 2; /*goto typfnd;*/
+    }
     /* specific food rather than color of gem/potion/spellbook[/scales] */
     if (!BSTRCMPI(d->bp, d->p - 6, "orange") && d->mntmp == NON_PM) {
         d->typ = ORANGE;
@@ -4213,6 +4252,7 @@ readobjnam_postparse1(struct _readobjnam_data *d)
         for (i = 0; i < (int) (sizeof wrpsym); i++) {
             register int j = strlen(wrp[i]);
 
+            /* check for "<class> [ of ] something" */
             if (!strncmpi(d->bp, wrp[i], j)) {
                 d->oclass = wrpsym[i];
                 if (d->oclass != AMULET_CLASS) {
@@ -4224,12 +4264,27 @@ readobjnam_postparse1(struct _readobjnam_data *d)
                     d->actualn = d->bp;
                 return 1; /*goto srch;*/
             }
+            /* check for "something <class>" */
             if (!BSTRCMPI(d->bp, d->p - j, wrp[i])) {
                 d->oclass = wrpsym[i];
-                d->p -= j;
-                *d->p = 0;
-                if (d->p > d->bp && d->p[-1] == ' ')
-                    d->p[-1] = 0;
+                /* for "foo amulet", leave the class name so that
+                   wishymatch() can do "of inversion" to try matching
+                   "amulet of foo"; other classes don't include their
+                   class name in their full object names (where
+                   "potion of healing" is just "healing", for instance) */
+                if (d->oclass != AMULET_CLASS) {
+                    d->p -= j;
+                    *d->p = '\0';
+                    if (d->p > d->bp && d->p[-1] == ' ')
+                        d->p[-1] = '\0';
+                } else {
+                    /* amulet without "of"; convoluted wording but better a
+                       special case that's handled than one that's missing */
+                    if (!strncmpi(d->bp, "versus poison ", 14)) {
+                        d->typ = AMULET_VERSUS_POISON;
+                        return 2; /*goto typfnd;*/
+                    }
+                }
                 d->actualn = d->dn = d->bp;
                 return 1; /*goto srch;*/
             }

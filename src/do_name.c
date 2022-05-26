@@ -1,4 +1,4 @@
-/* NetHack 3.7	do_name.c	$NHDT-Date: 1624322669 2021/06/22 00:44:29 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.208 $ */
+/* NetHack 3.7	do_name.c	$NHDT-Date: 1625885761 2021/07/10 02:56:01 $  $NHDT-Branch: NetHack-3.7 $:$NHDT-Revision: 1.213 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Pasi Kallinen, 2018. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -736,6 +736,7 @@ getpos(coord *ccp, boolean force, const char *goal)
 
         rushrun = FALSE;
 
+        g.program_state.getting_a_command = 1;
         c = readchar_poskey(&tx, &ty, &sidx);
 
         if (hilite_state) {
@@ -2655,6 +2656,10 @@ lookup_novel(const char *lookname, int *idx)
         lookname = "Sourcery"; /* [4] */
     else if (!strcmpi(lookname, "Masquerade"))
         lookname = "Maskerade"; /* [17] */
+    else if (!strcmpi(The(lookname), "The Amazing Maurice"))
+        lookname = "The Amazing Maurice and His Educated Rodents"; /* [27] */
+    else if (!strcmpi(lookname, "Thud"))
+        lookname = "Thud!"; /* [33] */
 
     for (k = 0; k < SIZE(sir_Terry_novels); ++k) {
         if (!strcmpi(lookname, sir_Terry_novels[k])

@@ -703,7 +703,7 @@ dotele(
         } else
             trap = 0;
     }
-    if (!trap) {
+    if (!trap && !break_the_rules) {
         boolean castit = FALSE;
         register int sp_no = 0, energy = 0;
 
@@ -743,7 +743,7 @@ dotele(
                the extra energy is spent even if that results in not
                having enough to cast (which also uses the move) */
             else if (u.uen < energy)
-                u.uen = energy;
+                energy = u.uen;
         } else if (u.uhunger <= 10) {
             cantdoit = "are too weak from hunger";
         } else if (ACURR(A_STR) < 4) {
@@ -1280,6 +1280,12 @@ rloc(
     if (mtmp == u.usteed) {
         tele();
         return TRUE;
+    }
+
+    if (mtmp->rider_id) {
+        /* teleport rider along with steed */
+        struct monst *rider = get_mon_rider(mtmp);
+        return rloc(rider, suppress_impossible);
     }
 
     if (mtmp->iswiz && mtmp->mx) { /* Wizard, not just arriving */
