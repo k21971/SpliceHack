@@ -55,7 +55,7 @@ TARGETPFX=
 SYSSRC = ../sys/share/ioctl.c ../sys/share/unixtty.c ../sys/unix/unixmain.c \
 	../sys/unix/unixunix.c ../sys/unix/unixres.c
 SYSOBJ = $(TARGETPFX)ioctl.o $(TARGETPFX)unixmain.o $(TARGETPFX)unixtty.o \
-	$(TARGETPFX)unixunix.o $(TARGETPFX)unixres.o
+	$(TARGETPFX)unixunix.o $(TARGETPFX)unixres.o $(TARGETPFX)recover.o
 #
 # for Systos
 # SYSSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
@@ -404,7 +404,7 @@ GITINFO=1
 # (rather than just in suffix default rule), such as is implemented by
 # gnu make and others which have picked up its extensions;
 # allowed values are 0, 1, and empty (which behaves like 0)
-QUIETCC=0
+QUIETCC=1
 
 # ----------------------------------------
 #
@@ -849,6 +849,8 @@ $(TARGETPFX)topl.o: ../win/tty/topl.c $(HACK_H) ../include/tcap.h \
 $(TARGETPFX)wintty.o: ../win/tty/wintty.c $(HACK_H) ../include/dlb.h \
 		../include/tcap.h ../include/wintty.h
 	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ ../win/tty/wintty.c
+$(TARGETPFX)recover.o: ../util/recover.c $(HACK_H)
+	$(TARGET_CC) $(TARGET_CFLAGS) -DNO_MAIN -c $@ ../util/recover.c
 $(TARGETPFX)cursmain.o: ../win/curses/cursmain.c $(HACK_H) ../include/wincurs.h
 	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ ../win/curses/cursmain.c
 $(TARGETPFX)curswins.o: ../win/curses/curswins.c $(HACK_H) \

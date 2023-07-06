@@ -9,6 +9,7 @@
 
 #include <errno.h>
 #include <sys/stat.h>
+#include <limits.h>
 #if defined(NO_FILE_LINKS) || defined(SUNOS4) || defined(POSIX_TYPES)
 #include <fcntl.h>
 #endif
@@ -26,6 +27,8 @@ extern void linux_mapoff(void);
 #ifndef NHSTDC
 extern int errno;
 #endif
+
+extern int restore_savefile(char *, const char *);
 
 static struct stat buf;
 
@@ -164,26 +167,38 @@ getlock(void)
         (void) close(fd);
 
       {
-        const char destroy_old_game_prompt[] =
-    "There is already a game in progress under your name.  Destroy old game?";
-
         if (iflags.window_inited) {
             /* this is a candidate for paranoid_confirmation */
-            c = yn(destroy_old_game_prompt);
+            c = yn_function("There is already a game in progress under your name.  Recover it [r], Destroy old game [y], Cancel [n] ?", "ryn", 'n');
         } else {
-            (void) printf("\n%s [yn] ", destroy_old_game_prompt);
+            (void) printf("\nThere is already a game in progress under your name.  Do what?\n");
+            (void) printf("\n  r - Try to recover it?");
+            (void) printf("\n  y - Destroy old game?");
+            (void) printf("\n  n - Cancel");
+            (void) printf("\n\n  => ");
             (void) fflush(stdout);
-            if ((c = getchar()) != EOF) {
-                int tmp;
-
-                (void) putchar(c);
-                (void) fflush(stdout);
-                while ((tmp = getchar()) != '\n' && tmp != EOF)
-                    ; /* eat rest of line and newline */
-            }
+            do {
+                c = getchar();
+            } while (!index("rRyYnN", c) && c != -1);
+            (void) printf("\e[7A"); /* cursor up 7 */
+            (void) printf("\e[J"); /* clear from cursor down */
         }
       }
-        if (c == 'y' || c == 'Y') {
+        if (c == 'r' || c == 'R') {
+            if (restore_savefile(g.lock, g.fqn_prefix[SAVEPREFIX]) == 0) {
+                const char *msg = "Automatic recovery of save file successful!  "
+                                  "Press any key to continue...\n";
+                fflush(stdout);
+                if (iflags.window_inited) {
+                    pline("%s", msg);
+                } else {
+                    printf("\n\n%s", msg);
+                    fflush(stdout);
+                    c = getchar();
+                }
+                goto gotlock;
+            }
+        } else if (c == 'y' || c == 'Y') {
             if (eraseoldlocks()) {
                 goto gotlock;
             } else {
