@@ -850,7 +850,7 @@ $(TARGETPFX)wintty.o: ../win/tty/wintty.c $(HACK_H) ../include/dlb.h \
 		../include/tcap.h ../include/wintty.h
 	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ ../win/tty/wintty.c
 $(TARGETPFX)recover.o: ../util/recover.c $(HACK_H)
-	$(TARGET_CC) $(TARGET_CFLAGS) -DNO_MAIN -c $@ ../util/recover.c
+	$(TARGET_CC) $(TARGET_CFLAGS) -DNO_MAIN -c -o $@ ../util/recover.c
 $(TARGETPFX)cursmain.o: ../win/curses/cursmain.c $(HACK_H) ../include/wincurs.h
 	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ ../win/curses/cursmain.c
 $(TARGETPFX)curswins.o: ../win/curses/curswins.c $(HACK_H) \
