@@ -102,14 +102,14 @@ formatkiller(
         /* PANICKED, TRICKED, QUIT, ESCAPED, ASCENDED */
         "", "", "", "", ""
     };
-    static NEARDATA const char *const murdered_by_msg[] = {
+    /*static NEARDATA const char *const murdered_by_msg[] = {
         "slain by ",
         "dismembered by ",  "sent to the next life by ",  "overpowered by ",
         "killed by ",       "inhumed by ",                "dispatched by ",
         "done in by ",      "brought low by ",            "struck down by ",
         "offed by ",        "taken down by ",             "sent to the grave by ",
         "cut down by ",     "slaughtered by "
-    };
+    };*/
     unsigned l;
     char c, *kname = g.killer.name;
 
@@ -124,11 +124,11 @@ formatkiller(
         kname = an(kname);
         /*FALLTHRU*/
     case KILLED_BY:
-        if (how == MURDERED && !is_june() && !(iflags.killedby))
+        /*if (how == MURDERED && !is_june() && !(iflags.killedby))
             (void) strncat(buf,
                 murdered_by_msg[g.moves % SIZE(murdered_by_msg)], siz - 1);
-        else
-            (void) strncat(buf, killed_by_prefix[how], siz - 1);
+        else*/
+        (void) strncat(buf, killed_by_prefix[how], siz - 1);
         l = strlen(buf);
         buf += l, siz -= l;
         break;
